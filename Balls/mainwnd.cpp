@@ -291,11 +291,12 @@ void mainwnd::change_title(::balls&, const balls_changed_args& args)
     text(oss.str());
 }
 
-vector<TASKDIALOG_BUTTON> get_difficulty_buttons{
-    { ID_SIMPLE, TEXT("简单\r\n正态分布，平均值为球数的一半") },
-    { ID_NORMAL, TEXT("正常\r\n正态分布，平均值为球数") },
-    { ID_HARD, TEXT("困难\r\n正态分布，平均值为球数的1.5倍") }
-};
+TASKDIALOG_BUTTON get_difficulty_buttons[] =
+    {
+        { ID_SIMPLE, TEXT("简单\r\n正态分布，平均值为球数的一半") },
+        { ID_NORMAL, TEXT("正常\r\n正态分布，平均值为球数") },
+        { ID_HARD, TEXT("困难\r\n正态分布，平均值为球数的1.5倍") }
+    };
 difficulty mainwnd::get_diff()
 {
     auto result =
@@ -327,9 +328,10 @@ difficulty mainwnd::get_diff()
     }
 }
 
-vector<TASKDIALOG_BUTTON> show_stop_buttons{
-    { ID_REPLAY, TEXT("重新开始") }
-};
+TASKDIALOG_BUTTON show_stop_buttons[] =
+    {
+        { ID_REPLAY, TEXT("重新开始") }
+    };
 bool mainwnd::show_stop()
 {
     wostringstream oss;
