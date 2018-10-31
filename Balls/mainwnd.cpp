@@ -5,6 +5,7 @@
 #include <ShObjIdl.h>
 #include <ShlObj.h>
 #include <fstream>
+#include <itemdlg.h>
 #include <msgbox.h>
 #include <sstream>
 
@@ -352,41 +353,26 @@ bool mainwnd::get_diff()
     return false;
 }
 
+COMDLG_FILTERSPEC show_open_filter[] =
+    {
+        { TEXT("存档文件"), TEXT("*.balls") },
+        { TEXT("所有文件"), TEXT("*.*") }
+    };
 wstring mainwnd::show_open_record()
 {
-    HRESULT hr = S_OK;
-    wstring result;
-    IFileOpenDialog* fileDlg;
-    hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDlg));
-    if (FAILED(hr))
-        return result;
-    COMDLG_FILTERSPEC rgSpec[] = {
-        { TEXT("存档文件"), TEXT("*.balls") }
-    };
-    hr = fileDlg->SetFileTypes(1, rgSpec);
-    if (FAILED(hr))
-        return result;
-    hr = fileDlg->Show(hWnd);
-    if (FAILED(hr))
-        return result;
-    IShellItem* pRet;
-    hr = fileDlg->GetResult(&pRet);
-    if (FAILED(hr))
-        return result;
-    LPWSTR nameBuffer;
-    hr = pRet->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &nameBuffer);
-    if (FAILED(hr))
-        return result;
-    result = nameBuffer;
-    CoTaskMemFree(nameBuffer);
-    pRet->Release();
-    fileDlg->Release();
-    return result;
+    open_item_dlg fdlg;
+    fdlg.filter(show_open_filter);
+    if (fdlg.show_dialog(*this) == S_OK)
+        return fdlg.result_filename();
+    return {};
 }
 
 bool mainwnd::show_open()
 {
-    ifstream stream(show_open_record());
+    wstring filename = show_open_record();
+    if (filename.empty())
+        return false;
+    ifstream stream(filename);
     int version;
     stream.read((char*)&version, sizeof(int));
     if (version != RECORD_VERSION)
@@ -455,42 +441,26 @@ bool mainwnd::show_close()
     return false;
 }
 
-wstring mainwnd::show_close_record()
-{
-    HRESULT hr = S_OK;
-    wstring result;
-    IFileSaveDialog* fileDlg;
-    hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDlg));
-    if (FAILED(hr))
-        return result;
-    COMDLG_FILTERSPEC rgSpec[] = {
+COMDLG_FILTERSPEC show_close_filter[] =
+    {
         { TEXT("存档文件"), TEXT("*.balls") }
     };
-    hr = fileDlg->SetFileTypes(1, rgSpec);
-    if (FAILED(hr))
-        return result;
-    hr = fileDlg->Show(hWnd);
-    if (FAILED(hr))
-        return result;
-    IShellItem* pRet;
-    hr = fileDlg->GetResult(&pRet);
-    if (FAILED(hr))
-        return result;
-    LPWSTR nameBuffer;
-    hr = pRet->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &nameBuffer);
-    if (FAILED(hr))
-        return result;
-    result = nameBuffer;
-    CoTaskMemFree(nameBuffer);
-    pRet->Release();
-    fileDlg->Release();
-    return result;
+wstring mainwnd::show_close_record()
+{
+    save_item_dlg fdlg;
+    fdlg.filter(show_close_filter);
+    if (fdlg.show_dialog(*this) == S_OK)
+        return fdlg.result_filename();
+    return {};
 }
 
 //如果保存成功返回true
 bool mainwnd::show_save()
 {
-    ofstream stream(show_close_record());
+    wstring filename = show_close_record();
+    if (filename.empty())
+        return false;
+    ofstream stream(filename);
     int version = RECORD_VERSION;
     stream.write((const char*)&version, sizeof(int));
     stream << balls;
