@@ -5,9 +5,10 @@
 #include <fstream>
 #include <itemdlg.h>
 #include <msgbox.h>
-#include <sstream>
+#include <sf/sformat.hpp>
 
 using namespace std;
+using namespace sf;
 using namespace sw;
 
 #define RECORD_VERSION 1
@@ -297,9 +298,7 @@ wstring get_string_dfct(difficulty dfct)
 
 void mainwnd::change_title(::balls&, const balls_changed_args& args)
 {
-    wostringstream oss;
-    oss << TEXT("二维弹球 - ") << get_string_dfct(balls.game_dfct()) << TEXT(" 球数：") << args.ball_num << TEXT(" 分数：") << args.score;
-    text(oss.str());
+    text(sprint(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
 }
 
 void mainwnd::wclose(window&, bool& handled)
@@ -404,14 +403,14 @@ TASKDIALOG_BUTTON show_stop_buttons[] =
     };
 bool mainwnd::show_stop()
 {
-    wostringstream oss;
-    oss << TEXT("分数：") << balls.score();
-
     auto result =
         taskdlg{
             TEXT("二维弹球"),
             TEXT("游戏结束"),
-            oss.str(),
+            sprint(TEXT("难度：{}\r\n球数：{}\r\n分数：{}"),
+                   get_string_dfct(balls.game_dfct()),
+                   balls.ball_num(),
+                   balls.score()),
             { taskdlg_information },
             { taskdlg_close_button, show_stop_buttons }
         }
