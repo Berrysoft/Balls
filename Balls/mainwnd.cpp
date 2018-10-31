@@ -2,16 +2,22 @@
 
 #include "mainwnd.h"
 #include "resource.h"
+#include <fstream>
 #include <msgbox.h>
 #include <sstream>
 
 using namespace std;
 using namespace sw;
 
+#define RECORD_VERSION 1
+
 #define ID_SIMPLE 201
 #define ID_NORMAL 202
 #define ID_HARD 203
-#define ID_REPLAY 204
+#define ID_OPEN 204
+#define ID_REPLAY 205
+#define ID_SAVE 206
+#define ID_NOSAVE 207
 
 constexpr int num_height = 50;
 
@@ -64,14 +70,17 @@ void mainwnd::init()
     key_down(&mainwnd::kdown, this);
     key_up(&mainwnd::kup, this);
     balls.ball_score_changed(&mainwnd::change_title, this);
-    //获取难度
-    balls.game_dfct(get_diff());
+    closing(&mainwnd::wclose, this);
     //调整大小
     client_rect({ 0, 0, client_width, client_height });
     move_center(false);
-    //初始化游戏
-    balls.sample_ball(balls.start_pos());
-    balls.reset();
+    //获取难度
+    if (!get_diff())
+    {
+        //初始化游戏
+        balls.sample_ball(balls.start_pos());
+        balls.reset();
+    }
     //强制刷新标题
     change_title(balls, { balls.ball_num(), balls.score() });
     //生成缓存
@@ -291,13 +300,19 @@ void mainwnd::change_title(::balls&, const balls_changed_args& args)
     text(oss.str());
 }
 
+void mainwnd::wclose(window&, bool& handled)
+{
+    handled = show_close();
+}
+
 TASKDIALOG_BUTTON get_difficulty_buttons[] =
     {
         { ID_SIMPLE, TEXT("简单\r\n正态分布，平均值为球数的一半") },
         { ID_NORMAL, TEXT("正常\r\n正态分布，平均值为球数") },
-        { ID_HARD, TEXT("困难\r\n正态分布，平均值为球数的1.5倍") }
+        { ID_HARD, TEXT("困难\r\n正态分布，平均值为球数的1.5倍") },
+        { ID_OPEN, TEXT("打开存档\r\n打开已保存的游戏存档") }
     };
-difficulty mainwnd::get_diff()
+bool mainwnd::get_diff()
 {
     auto result =
         taskdlg{
@@ -318,14 +333,43 @@ difficulty mainwnd::get_diff()
     switch (result.button_index)
     {
     case ID_SIMPLE:
-        return simple;
+        balls.game_dfct(simple);
+        break;
     case ID_NORMAL:
-        return normal;
+        balls.game_dfct(normal);
+        break;
     case ID_HARD:
-        return hard;
+        balls.game_dfct(hard);
+        break;
+    case ID_OPEN:
+        if (show_open())
+            return true;
     default:
         exit(0);
     }
+    return false;
+}
+
+bool mainwnd::show_open()
+{
+    ifstream stream(TEXT("record.balls"));
+    int version;
+    stream.read((char*)&version, sizeof(int));
+    if (version != RECORD_VERSION)
+    {
+        msgbox{
+            TEXT("存档是由本游戏的不同版本创建的，无法打开"),
+            TEXT("二维弹球"),
+            ok_button, error_icon
+        }
+            .show();
+        return false;
+    }
+    stream >> balls;
+    it = balls_iterator(&balls);
+    stream >> it;
+    stream.close();
+    return true;
 }
 
 TASKDIALOG_BUTTON show_stop_buttons[] =
@@ -349,6 +393,45 @@ bool mainwnd::show_stop()
     if (result.button_index == ID_REPLAY)
         return true;
     return false;
+}
+
+TASKDIALOG_BUTTON show_close_buttons[] =
+    {
+        { ID_SAVE, TEXT("存档") },
+        { ID_NOSAVE, TEXT("不存档") }
+    };
+
+bool mainwnd::show_close()
+{
+    auto result =
+        taskdlg{
+            TEXT("二维弹球"),
+            TEXT("游戏尚未结束，是否存档？"),
+            {},
+            { taskdlg_information },
+            { taskdlg_cancel_button, show_close_buttons }
+        }
+            .show_dialog(*this);
+    switch (result.button_index)
+    {
+    case ID_SAVE:
+        return !show_save();
+    case IDCANCEL:
+        return true;
+    }
+    return false;
+}
+
+//如果保存成功返回true
+bool mainwnd::show_save()
+{
+    ofstream stream(TEXT("record.balls"));
+    int version = RECORD_VERSION;
+    stream.write((const char*)&version, sizeof(int));
+    stream << balls;
+    stream << it;
+    stream.close();
+    return true;
 }
 
 void mainwnd::reset()

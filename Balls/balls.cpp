@@ -17,6 +17,20 @@ double point::size() const
     return sqrt(x * x + y * y);
 }
 
+ostream& operator<<(ostream& stream, point& p)
+{
+    stream.write((const char*)&p.x, sizeof(double));
+    stream.write((const char*)&p.y, sizeof(double));
+    return stream;
+}
+
+istream& operator>>(istream& stream, point& p)
+{
+    stream.read((char*)&p.x, sizeof(double));
+    stream.read((char*)&p.y, sizeof(double));
+    return stream;
+}
+
 bounce_side balls::get_bounce_side(int c, int r)
 {
     int result = 0;
@@ -60,7 +74,7 @@ bounce_side balls::get_bounce_side(int c, int r)
 
 balls::balls()
     : balln(1), startp({ client_width / 2, client_height - radius }), endp(startp),
-      mscore(0), rnd((unsigned int)time(nullptr)), dfct(normal), idxd(0, max_c - 1), prob(0, 1)
+      dfct(normal), rnd((unsigned int)time(nullptr)), idxd(0, max_c - 1), prob(0, 1)
 {
     for (int r = 0; r < max_r; r++)
     {
@@ -68,6 +82,60 @@ balls::balls()
     }
     balln.changed(&balls::balln_changed, this);
     mscore.changed(&balls::score_changed, this);
+}
+
+ostream& operator<<(ostream& stream, balls& balls)
+{
+    int tballn = balls.balln;
+    stream.write((const char*)&tballn, sizeof(int));
+    stream << balls.startp;
+    stream << balls.endp;
+    stream << balls.startv;
+    stream << balls.sampleb;
+    int tdbscore = balls.dbscore;
+    stream.write((const char*)&tdbscore, sizeof(int));
+    size_t tscore = balls.mscore;
+    stream.write((const char*)&tscore, sizeof(size_t));
+    int tdfct = balls.dfct;
+    stream.write((const char*)&tdfct, sizeof(int));
+    for (auto& sr : balls.squares)
+    {
+        for (int s : sr)
+        {
+            stream.write((const char*)&s, sizeof(int));
+        }
+    }
+    return stream;
+}
+
+istream& operator>>(istream& stream, balls& balls)
+{
+    int tballn;
+    stream.read((char*)&tballn, sizeof(int));
+    balls.balln = tballn;
+    stream >> balls.startp;
+    stream >> balls.endp;
+    stream >> balls.startv;
+    stream >> balls.sampleb;
+    int tdbscore;
+    stream.read((char*)&tdbscore, sizeof(int));
+    balls.dbscore = tdbscore;
+    size_t tscore;
+    stream.read((char*)&tscore, sizeof(size_t));
+    balls.mscore = tscore;
+    int tdfct;
+    stream.read((char*)&tdfct, sizeof(int));
+    balls.dfct = (difficulty)tdfct;
+    for (auto& sr : balls.squares)
+    {
+        for (int& s : sr)
+        {
+            int t;
+            stream.read((char*)&t, sizeof(int));
+            s = t;
+        }
+    }
+    return stream;
 }
 
 void change_ball(double& speed, double& pos, int side, bool minus)
@@ -436,4 +504,40 @@ void balls::set_sample(int x, int y)
              (c1 >= 0 && c1 < max_c && squares[r][c1] <= 0) && //判断左上角
              (c2 >= 0 && c2 < max_c && squares[r][c2] <= 0)); //判断右上角
     sampleb = tp - v; //越过了所以要减回来
+}
+
+ostream& operator<<(ostream& stream, balls_iterator& it)
+{
+    stream.write((const char*)&it.balln, sizeof(int));
+    stream.write((const char*)&it.endn, sizeof(int));
+    int tloop = it.loop;
+    stream.write((const char*)&tloop, sizeof(int));
+    size_t n = it.bp.size();
+    stream.write((const char*)&n, sizeof(size_t));
+	for (ball& b : it.bp)
+	{
+        stream << b.pos;
+        stream << b.speed;
+	}
+    return stream;
+}
+
+std::istream& operator>>(std::istream& stream, balls_iterator& it)
+{
+    stream.read((char*)&it.balln, sizeof(int));
+    stream.read((char*)&it.endn, sizeof(int));
+    int tloop;
+    stream.read((char*)&tloop, sizeof(int));
+    it.loop = tloop;
+    size_t n;
+    stream.read((char*)&n, sizeof(size_t));
+    it.bp.clear();
+	while (n--)
+	{
+        ball tb;
+        stream >> tb.pos;
+        stream >> tb.speed;
+        it.bp.push_back(tb);
+	}
+	return stream;
 }

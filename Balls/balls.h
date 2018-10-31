@@ -37,6 +37,9 @@ struct point
     double size() const;
 };
 
+std::ostream& operator<<(std::ostream& stream, point& p);
+std::istream& operator>>(std::istream& stream, point& p);
+
 struct ball
 {
     point pos;
@@ -97,10 +100,10 @@ private:
     vec startv; //起始速度
     point sampleb; //示例球
     bool dbscore; //是否分数加倍
-    std::vector<std::vector<int>> squares; //方块/控制圆/啥也没有
     observable<std::size_t> mscore; //分数
-    std::mt19937 rnd; //随机数发生器
     difficulty dfct; //难度
+    std::vector<std::vector<int>> squares; //方块/控制圆/啥也没有
+    std::mt19937 rnd; //随机数发生器
     std::uniform_int_distribution<int> idxd; //控制特殊控制圆的位置的随机分布（0-5）
     std::uniform_real_distribution<double> prob; //控制特殊控制圆出现的概率（0-1）
 
@@ -149,20 +152,24 @@ private:
     }
 
     EVENT_SENDER_E(ball_score_changed, balls&, const balls_changed_args&)
+
+public:
+    friend std::ostream& operator<<(std::ostream& stream, balls& balls);
+    friend std::istream& operator>>(std::istream& stream, balls& balls);
 };
 
 class balls_iterator
 {
 private:
     int balln; //本轮总球数
-    std::vector<ball> bp; //在场的球
     int endn; //因为各种原因下场的球数
     loopvar<int> loop; //循环变量，控制是否发球
+    std::vector<ball> bp; //在场的球
     balls* base; //创建这个迭代器的实例指针
 
 public:
     balls_iterator() = default;
-    balls_iterator(balls* base) : balln(base->balln), bp(), endn(0), loop(3, 0, 3), base(base) {}
+    balls_iterator(balls* base) : balln(base->balln), endn(0), loop(3, 0, 3), base(base) {}
 
     constexpr const std::vector<ball>& operator*() { return bp; }
     constexpr const std::vector<ball>* operator->() { return &bp; }
@@ -184,4 +191,8 @@ public:
         operator++();
         return result;
     }
+
+public:
+    friend std::ostream& operator<<(std::ostream& stream, balls_iterator& it);
+    friend std::istream& operator>>(std::istream& stream, balls_iterator& it);
 };

@@ -26,9 +26,13 @@ private:
     void kdown(sw::window&, const sw::key_args& args);
     void kup(sw::window&, const sw::key_args& args);
     void change_title(::balls&, const balls_changed_args& args);
+    void wclose(sw::window&, bool& handled);
 
-    difficulty get_diff();
+	bool get_diff();
+	bool show_open();
     bool show_stop();
+    bool show_close();
+    bool show_save();
 
     void reset();
 };

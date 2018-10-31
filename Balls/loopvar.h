@@ -16,6 +16,16 @@ public:
     constexpr operator T() const { return value; }
     constexpr operator bool() const { return value; }
 
+    loopvar& operator=(T v)
+    {
+        value = v;
+        if (value >= max)
+            value = min;
+        else if (value < min)
+            value = max - 1;
+        return *this;
+    }
+
     loopvar& operator++()
     {
         if (++value >= max)
@@ -32,9 +42,9 @@ public:
     }
     loopvar& operator--()
     {
-        if (--value <= min)
+        if (--value < min)
         {
-            value = max;
+            value = max - 1;
         }
         return *this;
     }
