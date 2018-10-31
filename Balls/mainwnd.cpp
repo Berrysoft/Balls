@@ -2,6 +2,8 @@
 
 #include "mainwnd.h"
 #include "resource.h"
+#include <ShObjIdl.h>
+#include <ShlObj.h>
 #include <fstream>
 #include <msgbox.h>
 #include <sstream>
@@ -329,7 +331,7 @@ bool mainwnd::get_diff()
               TEXT("帮助") },
             { TEXT("版权所有 © 2018 Berrysoft"), { taskdlg_information } }
         }
-            .show();
+            .show_dialog(*this);
     switch (result.button_index)
     {
     case ID_SIMPLE:
@@ -350,9 +352,41 @@ bool mainwnd::get_diff()
     return false;
 }
 
+wstring mainwnd::show_open_record()
+{
+    HRESULT hr = S_OK;
+    wstring result;
+    IFileOpenDialog* fileDlg;
+    hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDlg));
+    if (FAILED(hr))
+        return result;
+    COMDLG_FILTERSPEC rgSpec[] = {
+        { TEXT("存档文件"), TEXT("*.balls") }
+    };
+    hr = fileDlg->SetFileTypes(1, rgSpec);
+    if (FAILED(hr))
+        return result;
+    hr = fileDlg->Show(hWnd);
+    if (FAILED(hr))
+        return result;
+    IShellItem* pRet;
+    hr = fileDlg->GetResult(&pRet);
+    if (FAILED(hr))
+        return result;
+    LPWSTR nameBuffer;
+    hr = pRet->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &nameBuffer);
+    if (FAILED(hr))
+        return result;
+    result = nameBuffer;
+    CoTaskMemFree(nameBuffer);
+    pRet->Release();
+    fileDlg->Release();
+    return result;
+}
+
 bool mainwnd::show_open()
 {
-    ifstream stream(TEXT("record.balls"));
+    ifstream stream(show_open_record());
     int version;
     stream.read((char*)&version, sizeof(int));
     if (version != RECORD_VERSION)
@@ -362,7 +396,7 @@ bool mainwnd::show_open()
             TEXT("二维弹球"),
             ok_button, error_icon
         }
-            .show();
+            .show_dialog(*this);
         return false;
     }
     stream >> balls;
@@ -400,7 +434,6 @@ TASKDIALOG_BUTTON show_close_buttons[] =
         { ID_SAVE, TEXT("存档") },
         { ID_NOSAVE, TEXT("不存档") }
     };
-
 bool mainwnd::show_close()
 {
     auto result =
@@ -422,10 +455,42 @@ bool mainwnd::show_close()
     return false;
 }
 
+wstring mainwnd::show_close_record()
+{
+    HRESULT hr = S_OK;
+    wstring result;
+    IFileSaveDialog* fileDlg;
+    hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDlg));
+    if (FAILED(hr))
+        return result;
+    COMDLG_FILTERSPEC rgSpec[] = {
+        { TEXT("存档文件"), TEXT("*.balls") }
+    };
+    hr = fileDlg->SetFileTypes(1, rgSpec);
+    if (FAILED(hr))
+        return result;
+    hr = fileDlg->Show(hWnd);
+    if (FAILED(hr))
+        return result;
+    IShellItem* pRet;
+    hr = fileDlg->GetResult(&pRet);
+    if (FAILED(hr))
+        return result;
+    LPWSTR nameBuffer;
+    hr = pRet->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &nameBuffer);
+    if (FAILED(hr))
+        return result;
+    result = nameBuffer;
+    CoTaskMemFree(nameBuffer);
+    pRet->Release();
+    fileDlg->Release();
+    return result;
+}
+
 //如果保存成功返回true
 bool mainwnd::show_save()
 {
-    ofstream stream(TEXT("record.balls"));
+    ofstream stream(show_close_record());
     int version = RECORD_VERSION;
     stream.write((const char*)&version, sizeof(int));
     stream << balls;

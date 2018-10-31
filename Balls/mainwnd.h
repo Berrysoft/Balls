@@ -28,9 +28,11 @@ private:
     void change_title(::balls&, const balls_changed_args& args);
     void wclose(sw::window&, bool& handled);
 
-	bool get_diff();
-	bool show_open();
+    bool get_diff();
+    std::wstring show_open_record();
+    bool show_open();
     bool show_stop();
+    std::wstring show_close_record();
     bool show_close();
     bool show_save();
 
