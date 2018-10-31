@@ -2,8 +2,6 @@
 
 #include "mainwnd.h"
 #include "resource.h"
-#include <ShObjIdl.h>
-#include <ShlObj.h>
 #include <fstream>
 #include <itemdlg.h>
 #include <msgbox.h>
