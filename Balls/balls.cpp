@@ -366,6 +366,19 @@ balls_iterator balls::iterator(int x, int y)
     return iterator();
 }
 
+bool balls::over() const
+{
+    //如果最后一行有格子，游戏结束
+    for (int c = 0; c < max_c; c++)
+    {
+        if (squares[max_r - 1][c] > 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool balls::reset()
 {
     startp = endp; //起始位置设置为下一个起始位置
@@ -387,14 +400,9 @@ bool balls::reset()
             }
         }
     }
-    //如果最后一行有格子，游戏结束
-    for (int c = 0; c < max_c; c++)
-    {
-        if (squares[max_r - 1][c] > 0)
-        {
-            return false;
-        }
-    }
+
+    if (over())
+        return false;
 
     //临时声明一个正态分布
     //三个难度在游戏开始有所介绍
@@ -514,11 +522,11 @@ ostream& operator<<(ostream& stream, balls_iterator& it)
     stream.write((const char*)&tloop, sizeof(int));
     size_t n = it.bp.size();
     stream.write((const char*)&n, sizeof(size_t));
-	for (ball& b : it.bp)
-	{
+    for (ball& b : it.bp)
+    {
         stream << b.pos;
         stream << b.speed;
-	}
+    }
     return stream;
 }
 
@@ -532,12 +540,12 @@ std::istream& operator>>(std::istream& stream, balls_iterator& it)
     size_t n;
     stream.read((char*)&n, sizeof(size_t));
     it.bp.clear();
-	while (n--)
-	{
+    while (n--)
+    {
         ball tb;
         stream >> tb.pos;
         stream >> tb.speed;
         it.bp.push_back(tb);
-	}
-	return stream;
+    }
+    return stream;
 }

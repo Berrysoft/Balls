@@ -133,6 +133,7 @@ public:
     balls_iterator iterator();
     balls_iterator iterator(int x, int y);
 
+	bool over() const;
     bool reset();
     void reset_all();
 

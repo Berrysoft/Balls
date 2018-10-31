@@ -203,7 +203,8 @@ void mainwnd::timer_tick(timer&, DWORD)
         {
             if (show_stop())
             {
-                reset();
+                if (!get_diff())
+                    reset();
             }
             else
             {
@@ -303,7 +304,14 @@ void mainwnd::change_title(::balls&, const balls_changed_args& args)
 
 void mainwnd::wclose(window&, bool& handled)
 {
-    handled = show_close();
+    if (!balls.over())
+    {
+        bool started = main_timer;
+        main_timer.stop();
+        handled = show_close();
+        if (started)
+            main_timer.start();
+    }
 }
 
 TASKDIALOG_BUTTON get_difficulty_buttons[] =
