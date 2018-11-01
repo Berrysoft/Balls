@@ -11,7 +11,7 @@ using namespace std;
 using namespace sf;
 using namespace sw;
 
-#define RECORD_VERSION 1
+#define RECORD_VERSION 2
 
 #define ID_SIMPLE 201
 #define ID_NORMAL 202
@@ -377,7 +377,7 @@ bool mainwnd::show_open()
     wstring filename = show_open_record();
     if (filename.empty())
         return false;
-    ifstream stream(filename);
+    ifstream stream(filename, ios::binary);
     int version;
     stream.read((char*)&version, sizeof(int));
     if (version != RECORD_VERSION)
@@ -465,7 +465,7 @@ bool mainwnd::show_save()
     wstring filename = show_close_record();
     if (filename.empty())
         return false;
-    ofstream stream(filename);
+    ofstream stream(filename, ios::binary);
     int version = RECORD_VERSION;
     stream.write((const char*)&version, sizeof(int));
     stream << balls;
