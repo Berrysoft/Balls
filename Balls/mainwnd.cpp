@@ -2,6 +2,7 @@
 
 #include "mainwnd.h"
 #include "resource.h"
+#include "serialstream.h"
 #include <fstream>
 #include <itemdlg.h>
 #include <msgbox.h>
@@ -320,22 +321,19 @@ TASKDIALOG_BUTTON get_difficulty_buttons[] =
     };
 bool mainwnd::get_diff()
 {
-    auto result =
-        taskdlg{
-            TEXT("二维弹球"),
-            TEXT("请选择难度"),
-            TEXT("所有难度的区别仅为方块上数目大小的概率分布。"),
-            { taskdlg_custom, LoadIcon(current_app.instance(), MAKEINTRESOURCE(IDI_ICONAPP)) },
-            { taskdlg_close_button, get_difficulty_buttons, true },
-            {},
-            {},
-            { TEXT("加号增加球的数目；问号随机更改球的速度方向；\r\n"
-                   "减号使当前球消失；人民币符号使本轮得分加倍。\r\n"
-                   "按空格加速，按F7暂停。请不要过于依赖示例球。"),
-              TEXT("帮助") },
-            { TEXT("版权所有 © 2018 Berrysoft"), { taskdlg_information } }
-        }
-            .show_dialog(*this);
+    auto result = show_dialog(taskdlg{
+        TEXT("二维弹球"),
+        TEXT("请选择难度"),
+        TEXT("所有难度的区别仅为方块上数目大小的概率分布。"),
+        { taskdlg_custom, LoadIcon(current_app.instance(), MAKEINTRESOURCE(IDI_ICONAPP)) },
+        { taskdlg_close_button, get_difficulty_buttons, true },
+        {},
+        {},
+        { TEXT("加号增加球的数目；问号随机更改球的速度方向；\r\n"
+               "减号使当前球消失；人民币符号使本轮得分加倍。\r\n"
+               "按空格加速，按F7暂停。请不要过于依赖示例球。"),
+          TEXT("帮助") },
+        { TEXT("版权所有 © 2018 Berrysoft"), { taskdlg_information } } });
     switch (result.button_index)
     {
     case ID_SIMPLE:
@@ -365,7 +363,7 @@ wstring mainwnd::show_open_record()
 {
     open_item_dlg fdlg;
     fdlg.filter(show_open_filter);
-    if (fdlg.show_dialog(*this) == S_OK)
+    if (show_dialog(fdlg) == S_OK)
         return fdlg.result_filename();
     return {};
 }
@@ -375,23 +373,20 @@ bool mainwnd::show_open()
     wstring filename = show_open_record();
     if (filename.empty())
         return false;
-    ifstream stream(filename, ios::binary);
+    serialstream stream(filename, ios::in);
     int version;
-    stream.read((char*)&version, sizeof(int));
+    stream >> version;
     if (version != RECORD_VERSION)
     {
-        msgbox{
+        show_dialog(msgbox{
             TEXT("存档是由本游戏的不同版本创建的，无法打开"),
             TEXT("二维弹球"),
-            ok_button, error_icon
-        }
-            .show_dialog(*this);
+            ok_button, error_icon });
         return false;
     }
     stream >> balls;
     it = balls_iterator(&balls);
     stream >> it;
-    stream.close();
     return true;
 }
 
@@ -401,18 +396,15 @@ TASKDIALOG_BUTTON show_stop_buttons[] =
     };
 bool mainwnd::show_stop()
 {
-    auto result =
-        taskdlg{
-            TEXT("二维弹球"),
-            TEXT("游戏结束"),
-            sprint(TEXT("难度：{}\r\n球数：{}\r\n分数：{}"),
-                   get_string_dfct(balls.game_dfct()),
-                   balls.ball_num(),
-                   balls.score()),
-            { taskdlg_information },
-            { taskdlg_close_button, show_stop_buttons }
-        }
-            .show_dialog(*this);
+    auto result = show_dialog(taskdlg{
+        TEXT("二维弹球"),
+        TEXT("游戏结束"),
+        sprint(TEXT("难度：{}\r\n球数：{}\r\n分数：{}"),
+               get_string_dfct(balls.game_dfct()),
+               balls.ball_num(),
+               balls.score()),
+        { taskdlg_information },
+        { taskdlg_close_button, show_stop_buttons } });
     if (result.button_index == ID_REPLAY)
         return true;
     return false;
@@ -425,15 +417,12 @@ TASKDIALOG_BUTTON show_close_buttons[] =
     };
 bool mainwnd::show_close()
 {
-    auto result =
-        taskdlg{
-            TEXT("二维弹球"),
-            TEXT("游戏尚未结束，是否存档？"),
-            {},
-            { taskdlg_information },
-            { taskdlg_cancel_button, show_close_buttons }
-        }
-            .show_dialog(*this);
+    auto result = show_dialog(taskdlg{
+        TEXT("二维弹球"),
+        TEXT("游戏尚未结束，是否存档？"),
+        {},
+        { taskdlg_information },
+        { taskdlg_cancel_button, show_close_buttons } });
     switch (result.button_index)
     {
     case ID_SAVE:
@@ -452,7 +441,7 @@ wstring mainwnd::show_close_record()
 {
     save_item_dlg fdlg;
     fdlg.filter(show_close_filter);
-    if (fdlg.show_dialog(*this) == S_OK)
+    if (show_dialog(fdlg) == S_OK)
         return fdlg.result_filename();
     return {};
 }
@@ -463,12 +452,10 @@ bool mainwnd::show_save()
     wstring filename = show_close_record();
     if (filename.empty())
         return false;
-    ofstream stream(filename, ios::binary);
-    int version = RECORD_VERSION;
-    stream.write((const char*)&version, sizeof(int));
+    serialstream stream(filename, ios::out);
+    stream << RECORD_VERSION;
     stream << balls;
     stream << it;
-    stream.close();
     return true;
 }
 

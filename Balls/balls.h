@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "loopvar.h"
 #include "observable.h"
+#include "serialstream.h"
 #include <event.h>
 #include <random>
 
@@ -36,9 +37,6 @@ struct point
     operator POINT() const;
     double size() const;
 };
-
-std::ostream& operator<<(std::ostream& stream, point& p);
-std::istream& operator>>(std::istream& stream, point& p);
 
 struct ball
 {
@@ -156,8 +154,8 @@ private:
     EVENT_SENDER_E(ball_score_changed, balls&, const balls_changed_args&)
 
 public:
-    friend std::ostream& operator<<(std::ostream& stream, balls& balls);
-    friend std::istream& operator>>(std::istream& stream, balls& balls);
+    friend serialstream& operator<<(serialstream& stream, balls& balls);
+    friend serialstream& operator>>(serialstream& stream, balls& balls);
 };
 
 class balls_iterator
@@ -195,6 +193,6 @@ public:
     }
 
 public:
-    friend std::ostream& operator<<(std::ostream& stream, balls_iterator& it);
-    friend std::istream& operator>>(std::istream& stream, balls_iterator& it);
+    friend serialstream& operator<<(serialstream& stream, balls_iterator& it);
+    friend serialstream& operator>>(serialstream& stream, balls_iterator& it);
 };
