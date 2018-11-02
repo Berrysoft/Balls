@@ -53,6 +53,7 @@ constexpr int side_length = 100; //方块边长
 constexpr int client_width = side_length * max_c - 1; //用户区宽度
 constexpr int client_height = side_length * max_r - 1; //用户区高度
 constexpr double abs_speed = 25.0; //速度（像素/帧）
+constexpr int num_height = 50; //数字字号
 
 enum bounce_side
 {
@@ -133,7 +134,7 @@ public:
     balls_iterator iterator();
     balls_iterator iterator(int x, int y);
 
-	bool over() const;
+    bool over() const;
     bool reset();
     void reset_all();
 

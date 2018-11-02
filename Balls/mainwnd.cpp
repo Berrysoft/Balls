@@ -21,8 +21,6 @@ using namespace sw;
 #define ID_SAVE 206
 #define ID_NOSAVE 207
 
-constexpr int num_height = 50;
-
 constexpr UINT normal_speed = 30;
 constexpr UINT fast_speed = 10;
 

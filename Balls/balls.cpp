@@ -194,32 +194,40 @@ bool balls_iterator::bounce(ball& p)
     bounce_side bside = base->get_bounce_side(c, r);
 
     //处理控制圆
-    switch (base->squares[r][c])
+    if (base->squares[r][c] < 0)
     {
-    case ID_NEWBALL:
-        ++base->balln;
-        base->squares[r][c] = 0;
-        break;
-    case ID_DELBALL:
-        base->squares[r][c] = 0;
-        return true;
-    case ID_RNDTURN:
-    case ID_OLDTURN:
-    {
-        //控制随机转向的角度分布，是一个正态分布
-        //如果是平均分布，难度太大，没有游戏体验
-        normal_distribution<double> thetad(atan(p.speed.y / p.speed.x) + p.speed.x < 0 ? 0 : PI, PI / 2);
-        double theta = thetad(base->rnd);
-        double x = abs_speed * cos(theta);
-        double y = abs_speed * sin(theta);
-        p.speed = { x, y };
-        base->squares[r][c] = ID_OLDTURN; //触发后状态
-        break;
-    }
-    case ID_DBSCORE:
-        base->dbscore = true;
-        base->squares[r][c] = 0;
-        break;
+        point center = { (double)(ls + side_length / 2), (double)(ts + side_length / 2) };
+        double dis = (p.pos - center).size();
+        if (dis <= num_height / 2 + radius + 10)
+        {
+            switch (base->squares[r][c])
+            {
+            case ID_NEWBALL:
+                ++base->balln;
+                base->squares[r][c] = 0;
+                break;
+            case ID_DELBALL:
+                base->squares[r][c] = 0;
+                return true;
+            case ID_RNDTURN:
+            case ID_OLDTURN:
+            {
+                //控制随机转向的角度分布，是一个正态分布
+                //如果是平均分布，难度太大，没有游戏体验
+                normal_distribution<double> thetad(atan(p.speed.y / p.speed.x) + p.speed.x < 0 ? 0 : PI, PI / 2);
+                double theta = thetad(base->rnd);
+                double x = abs_speed * cos(theta);
+                double y = abs_speed * sin(theta);
+                p.speed = { x, y };
+                base->squares[r][c] = ID_OLDTURN; //触发后状态
+                break;
+            }
+            case ID_DBSCORE:
+                base->dbscore = true;
+                base->squares[r][c] = 0;
+                break;
+            }
+        }
     }
 
     //位置增加一个速度
