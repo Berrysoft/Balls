@@ -176,7 +176,7 @@ public:
 
     constexpr operator bool() const { return balln > endn; }
 
-    bool end_shooting() const { return bp.size() + endn >= (std::size_t)balln; }
+    bool end_shooting() const { return (int)bp.size() + endn >= balln; }
 
 private:
     bool bounce(ball& p);

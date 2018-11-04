@@ -90,32 +90,60 @@ void mainwnd::init()
     hdcbuffer.text_align(TA_CENTER);
     hdcbuffer.back_mode(TRANSPARENT);
     hdcbuffer.text_color(white_fore);
-    hdcbuffer.set_font(font{ TEXT("Segoe UI"), num_height }.create());
+    hdcbuffer.set_font(font{ TEXT("Segoe UI"), num_height });
+}
+
+constexpr int power = 4;
+constexpr int range = 256 / power;
+
+COLORREF get_square_color(int t)
+{
+    t %= range * 5;
+    if (t < range)
+    {
+        return RGB(t * power, 0, 255);
+    }
+    else if (t < range * 2)
+    {
+        return RGB(255, 0, 255 - (t - range) * power);
+    }
+    else if (t < range * 3)
+    {
+        return RGB(255, (t - range * 2) * power, 0);
+    }
+    else if (t < range * 4)
+    {
+        return RGB(255 - (t - range * 3) * power, 255, (t - range * 3) * power);
+    }
+    else
+    {
+        return RGB(0, 255 - (t - range * 4) * power, 255);
+    }
 }
 
 void mainwnd::main_paint(window&, dev_context& dc)
 {
     //画背景
-    hdcbuffer.set_pen(black_back_pen.create());
-    hdcbuffer.set_brush(black_back_brush.create());
+    hdcbuffer.set_pen(black_back_pen);
+    hdcbuffer.set_brush(black_back_brush);
     hdcbuffer.draw_rect({ 0, 0, client_width, client_height });
     //只有没有发射球的时候才画示例球
     if (!it)
     {
-        hdcbuffer.set_pen(red_sample_pen.create());
-        hdcbuffer.set_brush(red_sample_brush.create());
+        hdcbuffer.set_pen(red_sample_pen);
+        hdcbuffer.set_brush(red_sample_brush);
         hdcbuffer.draw_ellipse(balls.sample_ball(), radius);
     }
     //如果加倍就画黄色球，反之画红色球
     if (balls.double_score())
     {
-        hdcbuffer.set_pen(yellow_circle_pen.create());
-        hdcbuffer.set_brush(yellow_circle_brush.create());
+        hdcbuffer.set_pen(yellow_circle_pen);
+        hdcbuffer.set_brush(yellow_circle_brush);
     }
     else
     {
-        hdcbuffer.set_pen(red_ball_pen.create());
-        hdcbuffer.set_brush(red_ball_brush.create());
+        hdcbuffer.set_pen(red_ball_pen);
+        hdcbuffer.set_brush(red_ball_brush);
     }
     //球没有发射完才画起始球
     if (!it || !it.end_shooting())
@@ -133,7 +161,7 @@ void mainwnd::main_paint(window&, dev_context& dc)
         hdcbuffer.draw_ellipse(p.pos, radius);
     }
     //下面的都是绿边框
-    hdcbuffer.set_pen(green_border_pen.create());
+    hdcbuffer.set_pen(green_border_pen);
     for (int x = 0; x < max_c; x++)
     {
         for (int y = 0; y < max_r; y++)
@@ -144,7 +172,7 @@ void mainwnd::main_paint(window&, dev_context& dc)
             if (t > 0)
             {
                 //方块的填充色会变化
-                hdcbuffer.set_brush(solid_brush{ RGB(t > 63 ? 255 : t * 4, 0, t > 63 ? t >= 127 ? 0 : 255 - (t - 63) * 4 : 255) }.create());
+                hdcbuffer.set_brush(solid_brush{ get_square_color(t) });
                 hdcbuffer.draw_rect({ x * side_length + 5, y * side_length + 5, (x + 1) * side_length - 1 - 5, (y + 1) * side_length - 1 - 5 });
                 hdcbuffer.draw_string({ cx, cy - num_height / 2 }, to_wstring(t));
             }
@@ -154,18 +182,18 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 {
                 case ID_NEWBALL:
                 {
-                    hdcbuffer.set_brush(blue_circle_brush.create());
+                    hdcbuffer.set_brush(blue_circle_brush);
                     hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
-                    pen_ptr ori = hdcbuffer.set_pen(white_fore_pen.create());
+                    pen_ptr ori = hdcbuffer.set_pen(white_fore_pen);
                     hdcbuffer.draw_cross({ cx, cy }, num_height - 10 * 2);
                     hdcbuffer.set_pen(move(ori));
                     break;
                 }
                 case ID_DELBALL:
                 {
-                    hdcbuffer.set_brush(red_ball_brush.create());
+                    hdcbuffer.set_brush(red_ball_brush);
                     hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
-                    pen_ptr ori = hdcbuffer.set_pen(white_fore_pen.create());
+                    pen_ptr ori = hdcbuffer.set_pen(white_fore_pen);
                     hdcbuffer.draw_line({ cx - num_height / 2 + 10, cy }, { cx + num_height / 2 - 10, cy });
                     hdcbuffer.set_pen(move(ori));
                     break;
@@ -173,14 +201,14 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 case ID_RNDTURN:
                 case ID_OLDTURN:
                 {
-                    hdcbuffer.set_brush((t == ID_RNDTURN ? purple_circle_brush : red_sample_brush).create());
+                    hdcbuffer.set_brush(t == ID_RNDTURN ? purple_circle_brush : red_sample_brush);
                     hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
                     hdcbuffer.draw_string({ cx, cy - num_height / 2 }, TEXT("?"));
                     break;
                 }
                 case ID_DBSCORE:
                 {
-                    hdcbuffer.set_brush(yellow_circle_brush.create());
+                    hdcbuffer.set_brush(yellow_circle_brush);
                     hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
                     hdcbuffer.draw_string({ cx, cy - num_height / 2 }, TEXT("￥"));
                     break;
