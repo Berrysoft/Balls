@@ -29,8 +29,7 @@ public:
 template <typename T, typename = std::enable_if_t<std::is_trivial<std::remove_reference_t<T>>::value>>
 inline serialstream& operator<<(serialstream& stream, T&& obj)
 {
-    T value = std::forward<T>(obj);
-    stream.base_stream.write((const char*)&value, sizeof(value));
+    stream.base_stream.write((const char*)&obj, sizeof(std::remove_reference_t<T>));
     return stream;
 }
 
