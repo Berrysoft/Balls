@@ -22,9 +22,6 @@ using namespace sw;
 #define ID_SAVE 206
 #define ID_NOSAVE 207
 
-constexpr UINT normal_speed = 30;
-constexpr UINT fast_speed = 10;
-
 constexpr COLORREF black_back = RGB(0, 0, 0);
 constexpr pen black_back_pen = { PS_SOLID, 1, black_back };
 constexpr solid_brush black_back_brush = { black_back };
@@ -55,7 +52,7 @@ constexpr solid_brush purple_circle_brush = { purple_circle };
 
 mainwnd::mainwnd()
     : window(L"Balls", WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX),
-      main_timer(30), fasten(false)
+      main_timer(10)
 {
     init();
 }
@@ -68,7 +65,6 @@ void mainwnd::init()
     main_timer.elapsed(&mainwnd::timer_tick, this);
     mouse_down(&mainwnd::click, this);
     mouse_move(&mainwnd::mmove, this);
-    key_down(&mainwnd::kdown, this);
     key_up(&mainwnd::kup, this);
     balls.ball_score_changed(&mainwnd::change_title, this);
     closing(&mainwnd::wclose, this);
@@ -172,9 +168,15 @@ void mainwnd::main_paint(window&, dev_context& dc)
             if (t > 0)
             {
                 //方块的填充色会变化
-                hdcbuffer.set_brush(solid_brush{ get_square_color(t) });
+                COLORREF fillc = get_square_color(t);
+                BYTE g = GetGValue(fillc);
+                if (g > 127)
+                    hdcbuffer.text_color(black_back);
+                hdcbuffer.set_brush(solid_brush{ fillc });
                 hdcbuffer.draw_rect({ x * side_length + 5, y * side_length + 5, (x + 1) * side_length - 1 - 5, (y + 1) * side_length - 1 - 5 });
                 hdcbuffer.draw_string({ cx, cy - num_height / 2 }, to_wstring(t));
+                if (g > 127)
+                    hdcbuffer.text_color(white_fore);
             }
             else
             {
@@ -269,29 +271,12 @@ void mainwnd::mmove(window&, const mouse_args& arg)
     refresh(false);
 }
 
-void mainwnd::kdown(window&, const key_args& args)
-{
-    //按下空格加快速度
-    if (args.key == VK_SPACE && !fasten)
-    {
-        fasten = true;
-        main_timer.time_span(fast_speed);
-    }
-}
-
 void mainwnd::kup(window&, const key_args& args)
 {
     //抬起空格恢复正常
     //按F7暂停
     switch (args.key)
     {
-    case VK_SPACE:
-        if (fasten)
-        {
-            fasten = false;
-            main_timer.time_span(normal_speed);
-        }
-        break;
     case VK_F7:
         if (it)
         {
@@ -491,6 +476,4 @@ void mainwnd::reset()
 {
     balls.reset_all();
     balls.reset();
-    fasten = false;
-    main_timer.time_span(normal_speed);
 }
