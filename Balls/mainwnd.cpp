@@ -66,7 +66,7 @@ void mainwnd::init()
     //关联事件
     paint(&mainwnd::main_paint, this);
     main_timer.elapsed(&mainwnd::timer_tick, this);
-    mouse_down(&mainwnd::click, this);
+    mouse_up(&mainwnd::click, this);
     mouse_move(&mainwnd::mmove, this);
     key_up(&mainwnd::kup, this);
     balls.ball_score_changed(&mainwnd::change_title, this);
