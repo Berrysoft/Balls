@@ -134,11 +134,11 @@ void mainwnd::main_paint(window&, dev_context& dc)
     hdcbuffer.set_pen(black_none_pen);
     hdcbuffer.set_brush(black_none_brush);
     hdcbuffer.draw_rect({ 0, 0, dtw, dth });
+    POINT orip = hdcbuffer.set_org({ -dx, -dy });
     hdcbuffer.set_pen(black_back_pen);
     hdcbuffer.set_brush(black_back_brush);
-    hdcbuffer.draw_rect({ dx, dy, dx + dw, dy + dh });
+    hdcbuffer.draw_rect({ 0, 0, dw, dh });
     double extend = (double)dw / (double)client_width;
-    POINT orip = hdcbuffer.set_org({ -dx, -dy });
     hdcbuffer.set_font(font{ TEXT("Segoe UI"), (int)round(num_height * extend) });
     //只有没有发射球的时候才画示例球
     if (!it)
@@ -361,7 +361,7 @@ void mainwnd::wschanged(window&, const size_args& args)
     dh = side_l * max_r - 1;
     dx = (args.cx - dw) / 2;
     dy = (args.cy - dh) / 2;
-    refresh();
+    refresh(false);
 }
 
 TASKDIALOG_BUTTON get_difficulty_buttons[] =
