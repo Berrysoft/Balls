@@ -26,7 +26,7 @@ constexpr COLORREF black_none = RGB(0, 0, 0);
 constexpr pen black_none_pen = { PS_SOLID, 1, black_none };
 constexpr solid_brush black_none_brush = { black_none };
 
-constexpr COLORREF black_back = RGB(12, 12, 12);
+constexpr COLORREF black_back = RGB(31, 31, 31);
 constexpr pen black_back_pen = { PS_SOLID, 1, black_back };
 constexpr solid_brush black_back_brush = { black_back };
 
@@ -55,8 +55,7 @@ constexpr COLORREF purple_circle = RGB(136, 23, 152);
 constexpr solid_brush purple_circle_brush = { purple_circle };
 
 mainwnd::mainwnd()
-    : window(TEXT("Balls")),
-      main_timer(10)
+    : window(TEXT("Balls")), main_timer(10)
 {
     init();
 }
@@ -267,7 +266,8 @@ void mainwnd::timer_tick(timer&, DWORD)
         POINT p;
         if (GetCursorPos(&p) && ScreenToClient(hWnd, &p))
         {
-            balls.set_sample(p.x, p.y);
+            POINT cp = get_com_point(p);
+            balls.set_sample(cp.x, cp.y);
         }
     }
     //不需要清屏，位图是覆盖上去的
