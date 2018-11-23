@@ -12,6 +12,9 @@ private:
     sw::timer main_timer;
     sw::dev_context hdcbuffer;
 
+	int dtw, dth;
+	int dx, dy, dw, dh;
+
 public:
     mainwnd();
 
@@ -25,6 +28,9 @@ private:
     void kup(sw::window&, const sw::key_args& args);
     void change_title(::balls&, const balls_changed_args& args);
     void wclose(sw::window&, bool& handled);
+    void wschanged(sw::window&, const sw::size_args& args);
+
+	POINT get_com_point(POINT rp);
 
     bool get_diff();
     std::wstring show_open_record();

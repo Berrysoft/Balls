@@ -22,7 +22,11 @@ using namespace sw;
 #define ID_SAVE 206
 #define ID_NOSAVE 207
 
-constexpr COLORREF black_back = RGB(0, 0, 0);
+constexpr COLORREF black_none = RGB(0, 0, 0);
+constexpr pen black_none_pen = { PS_SOLID, 1, black_none };
+constexpr solid_brush black_none_brush = { black_none };
+
+constexpr COLORREF black_back = RGB(12, 12, 12);
 constexpr pen black_back_pen = { PS_SOLID, 1, black_back };
 constexpr solid_brush black_back_brush = { black_back };
 
@@ -51,7 +55,7 @@ constexpr COLORREF purple_circle = RGB(136, 23, 152);
 constexpr solid_brush purple_circle_brush = { purple_circle };
 
 mainwnd::mainwnd()
-    : window(L"Balls", WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX),
+    : window(TEXT("Balls")),
       main_timer(10)
 {
     init();
@@ -68,8 +72,9 @@ void mainwnd::init()
     key_up(&mainwnd::kup, this);
     balls.ball_score_changed(&mainwnd::change_title, this);
     closing(&mainwnd::wclose, this);
+    size_changed(&mainwnd::wschanged, this);
     //调整大小
-    client_rect({ 0, 0, client_width, client_height });
+    client_rect({ 0, 0, client_width / 2, client_height / 2 });
     move_center(false);
     //获取难度
     if (!get_diff())
@@ -81,12 +86,16 @@ void mainwnd::init()
     //强制刷新标题
     change_title(balls, { balls.ball_num(), balls.score() });
     //生成缓存
-    hdcbuffer = get_buffered_dc(client_width, client_height);
+    HWND dsh = GetDesktopWindow();
+    RECT dhr;
+    GetWindowRect(dsh, &dhr);
+    dtw = dhr.right - dhr.left;
+    dth = dhr.bottom - dhr.top;
+    hdcbuffer = get_buffered_dc(dtw, dth);
     //字符相对于y居中放置（方便计算坐标）
     hdcbuffer.text_align(TA_CENTER);
     hdcbuffer.back_mode(TRANSPARENT);
     hdcbuffer.text_color(white_fore);
-    hdcbuffer.set_font(font{ TEXT("Segoe UI"), num_height });
 }
 
 constexpr int power = 4;
@@ -117,18 +126,27 @@ COLORREF get_square_color(int t)
     }
 }
 
+RECT operator*(const RECT& r, double extend) { return { (LONG)round(r.left * extend), (LONG)round(r.top * extend), (LONG)round(r.right * extend), (LONG)round(r.bottom * extend) }; }
+POINT operator*(const POINT& p, double extend) { return { (LONG)round(p.x * extend), (LONG)round(p.y * extend) }; }
+
 void mainwnd::main_paint(window&, dev_context& dc)
 {
     //画背景
+    hdcbuffer.set_pen(black_none_pen);
+    hdcbuffer.set_brush(black_none_brush);
+    hdcbuffer.draw_rect({ 0, 0, dtw, dth });
     hdcbuffer.set_pen(black_back_pen);
     hdcbuffer.set_brush(black_back_brush);
-    hdcbuffer.draw_rect({ 0, 0, client_width, client_height });
+    hdcbuffer.draw_rect({ dx, dy, dx + dw, dy + dh });
+    double extend = (double)dw / (double)client_width;
+    POINT orip = hdcbuffer.set_org({ -dx, -dy });
+    hdcbuffer.set_font(font{ TEXT("Segoe UI"), (int)round(num_height * extend) });
     //只有没有发射球的时候才画示例球
     if (!it)
     {
         hdcbuffer.set_pen(red_sample_pen);
         hdcbuffer.set_brush(red_sample_brush);
-        hdcbuffer.draw_ellipse(balls.sample_ball(), radius);
+        hdcbuffer.draw_ellipse(balls.sample_ball() * extend, (int)round(radius * extend));
     }
     //如果加倍就画黄色球，反之画红色球
     if (balls.double_score())
@@ -144,17 +162,17 @@ void mainwnd::main_paint(window&, dev_context& dc)
     //球没有发射完才画起始球
     if (!it || !it.end_shooting())
     {
-        hdcbuffer.draw_ellipse(balls.start_pos(), radius);
+        hdcbuffer.draw_ellipse(balls.start_pos() * extend, (int)round(radius * extend));
     }
     //确定了下一个起始位置才画终止球
     if (balls.end_pos() != balls.start_pos())
     {
-        hdcbuffer.draw_ellipse(balls.end_pos(), radius);
+        hdcbuffer.draw_ellipse(balls.end_pos() * extend, (int)round(radius * extend));
     }
     //画所有运动中的球
     for (const ball& p : *it)
     {
-        hdcbuffer.draw_ellipse(p.pos, radius);
+        hdcbuffer.draw_ellipse(p.pos * extend, (int)round(radius * extend));
     }
     //下面的都是绿边框
     hdcbuffer.set_pen(green_border_pen);
@@ -173,8 +191,8 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 if (g > 127)
                     hdcbuffer.text_color(black_back);
                 hdcbuffer.set_brush(solid_brush{ fillc });
-                hdcbuffer.draw_rect({ x * side_length + 5, y * side_length + 5, (x + 1) * side_length - 1 - 5, (y + 1) * side_length - 1 - 5 });
-                hdcbuffer.draw_string({ cx, cy - num_height / 2 }, to_wstring(t));
+                hdcbuffer.draw_rect(RECT{ x * side_length + 5, y * side_length + 5, (x + 1) * side_length - 1 - 5, (y + 1) * side_length - 1 - 5 } * extend);
+                hdcbuffer.draw_string(POINT{ cx, cy - num_height / 2 } * extend, to_wstring(t));
                 if (g > 127)
                     hdcbuffer.text_color(white_fore);
             }
@@ -185,18 +203,18 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 case ID_NEWBALL:
                 {
                     hdcbuffer.set_brush(blue_circle_brush);
-                    hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
+                    hdcbuffer.draw_ellipse(POINT{ cx, cy } * extend, (int)round(num_height / 2 * extend));
                     pen_ptr ori = hdcbuffer.set_pen(white_fore_pen);
-                    hdcbuffer.draw_cross({ cx, cy }, num_height - 10 * 2);
+                    hdcbuffer.draw_cross(POINT{ cx, cy } * extend, (int)round((num_height - 10 * 2) * extend));
                     hdcbuffer.set_pen(move(ori));
                     break;
                 }
                 case ID_DELBALL:
                 {
                     hdcbuffer.set_brush(red_ball_brush);
-                    hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
+                    hdcbuffer.draw_ellipse(POINT{ cx, cy } * extend, (int)round(num_height / 2 * extend));
                     pen_ptr ori = hdcbuffer.set_pen(white_fore_pen);
-                    hdcbuffer.draw_line({ cx - num_height / 2 + 10, cy }, { cx + num_height / 2 - 10, cy });
+                    hdcbuffer.draw_line(POINT{ cx - num_height / 2 + 10, cy } * extend, POINT{ cx + num_height / 2 - 10, cy } * extend);
                     hdcbuffer.set_pen(move(ori));
                     break;
                 }
@@ -204,23 +222,24 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 case ID_OLDTURN:
                 {
                     hdcbuffer.set_brush(t == ID_RNDTURN ? purple_circle_brush : red_sample_brush);
-                    hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
-                    hdcbuffer.draw_string({ cx, cy - num_height / 2 }, TEXT("?"));
+                    hdcbuffer.draw_ellipse(POINT{ cx, cy } * extend, (int)round(num_height / 2 * extend));
+                    hdcbuffer.draw_string(POINT{ cx, cy - num_height / 2 } * extend, TEXT("?"));
                     break;
                 }
                 case ID_DBSCORE:
                 {
                     hdcbuffer.set_brush(yellow_circle_brush);
-                    hdcbuffer.draw_ellipse({ cx, cy }, num_height / 2);
-                    hdcbuffer.draw_string({ cx, cy - num_height / 2 }, TEXT("￥"));
+                    hdcbuffer.draw_ellipse(POINT{ cx, cy } * extend, (int)round(num_height / 2 * extend));
+                    hdcbuffer.draw_string(POINT{ cx, cy - num_height / 2 } * extend, TEXT("￥"));
                     break;
                 }
                 }
             }
         }
     }
+    hdcbuffer.set_org(orip);
     //最后把位图复制到窗口上
-    dc.copy_dc_bit({ 0, 0, client_width, client_height }, hdcbuffer);
+    dc.copy_dc_bit({ 0, 0, dtw, dth }, hdcbuffer);
 }
 
 void mainwnd::timer_tick(timer&, DWORD)
@@ -255,19 +274,27 @@ void mainwnd::timer_tick(timer&, DWORD)
     refresh(false);
 }
 
+POINT mainwnd::get_com_point(POINT rp)
+{
+    double extend = (double)client_width / (double)dw;
+    return { (int)round((rp.x - dx) * extend), (int)round((rp.y - dy) * extend) };
+}
+
 void mainwnd::click(window&, const mouse_args& arg)
 {
     //只有在本轮未开始的时候响应单击
     if (!it)
     {
-        it = balls.iterator(arg.pos.x, arg.pos.y);
+        POINT cp = get_com_point(arg.pos);
+        it = balls.iterator(cp.x, cp.y);
         main_timer.start();
     }
 }
 
 void mainwnd::mmove(window&, const mouse_args& arg)
 {
-    balls.set_sample(arg.pos.x, arg.pos.y);
+    POINT cp = get_com_point(arg.pos);
+    balls.set_sample(cp.x, cp.y);
     refresh(false);
 }
 
@@ -323,6 +350,18 @@ void mainwnd::wclose(window&, bool& handled)
         if (started)
             main_timer.start();
     }
+}
+
+void mainwnd::wschanged(window&, const size_args& args)
+{
+    int side_w = (args.cx + 1) / max_c;
+    int side_h = (args.cy + 1) / max_r;
+    int side_l = min(side_w, side_h);
+    dw = side_l * max_c - 1;
+    dh = side_l * max_r - 1;
+    dx = (args.cx - dw) / 2;
+    dy = (args.cy - dh) / 2;
+    refresh();
 }
 
 TASKDIALOG_BUTTON get_difficulty_buttons[] =

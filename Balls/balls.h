@@ -21,6 +21,8 @@ struct point
     friend constexpr point operator+(const point& p, const vec& v) { return { p.x + v.x, p.y + v.y }; }
     friend constexpr point operator-(const point& p, const vec& v) { return { p.x - v.x, p.y - v.y }; }
 
+	friend constexpr point operator*(const point& p, double extend) { return { p.x * extend, p.y * extend }; }
+
     point& operator+=(const vec& v)
     {
         x += v.x;
@@ -44,14 +46,14 @@ struct ball
     vec speed;
 };
 
-constexpr int radius = 10; //球的半径
+constexpr int radius = 20; //球的半径
 constexpr int max_c = 6; //方块行数
 constexpr int max_r = 8; //方块列数
-constexpr int side_length = 100; //方块边长
+constexpr int side_length = 200; //方块边长
 constexpr int client_width = side_length * max_c - 1; //用户区宽度
 constexpr int client_height = side_length * max_r - 1; //用户区高度
-constexpr double abs_speed = 25.0; //速度（像素/帧）
-constexpr int num_height = 50; //数字字号
+constexpr double abs_speed = 50.0; //速度（像素/帧）
+constexpr int num_height = 100; //数字字号
 
 enum bounce_side
 {
