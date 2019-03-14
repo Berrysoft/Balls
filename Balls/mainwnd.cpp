@@ -337,7 +337,7 @@ wstring get_string_dfct(difficulty dfct)
 
 void mainwnd::change_title(::balls&, const balls_changed_args& args)
 {
-    text(sprint(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
+    text(wsprint(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
 }
 
 void mainwnd::wclose(window&, bool& handled)
@@ -364,13 +364,12 @@ void mainwnd::wschanged(window&, const size_args& args)
     refresh(false);
 }
 
-TASKDIALOG_BUTTON get_difficulty_buttons[] =
-    {
-        { ID_SIMPLE, TEXT("简单\r\n正态分布，平均值为球数的一半") },
-        { ID_NORMAL, TEXT("正常\r\n正态分布，平均值为球数") },
-        { ID_HARD, TEXT("困难\r\n正态分布，平均值为球数的1.5倍") },
-        { ID_OPEN, TEXT("打开存档\r\n打开已保存的游戏存档") }
-    };
+TASKDIALOG_BUTTON get_difficulty_buttons[] = {
+    { ID_SIMPLE, TEXT("简单\r\n正态分布，平均值为球数的一半") },
+    { ID_NORMAL, TEXT("正常\r\n正态分布，平均值为球数") },
+    { ID_HARD, TEXT("困难\r\n正态分布，平均值为球数的1.5倍") },
+    { ID_OPEN, TEXT("打开存档\r\n打开已保存的游戏存档") }
+};
 bool mainwnd::get_diff()
 {
     auto result = show_dialog(taskdlg{
@@ -406,11 +405,10 @@ bool mainwnd::get_diff()
     return false;
 }
 
-COMDLG_FILTERSPEC show_open_filter[] =
-    {
-        { TEXT("存档文件"), TEXT("*.balls") },
-        { TEXT("所有文件"), TEXT("*.*") }
-    };
+COMDLG_FILTERSPEC show_open_filter[] = {
+    { TEXT("存档文件"), TEXT("*.balls") },
+    { TEXT("所有文件"), TEXT("*.*") }
+};
 wstring mainwnd::show_open_record()
 {
     open_item_dlg fdlg;
@@ -442,19 +440,18 @@ bool mainwnd::show_open()
     return true;
 }
 
-TASKDIALOG_BUTTON show_stop_buttons[] =
-    {
-        { ID_REPLAY, TEXT("重新开始") }
-    };
+TASKDIALOG_BUTTON show_stop_buttons[] = {
+    { ID_REPLAY, TEXT("重新开始") }
+};
 bool mainwnd::show_stop()
 {
     auto result = show_dialog(taskdlg{
         TEXT("二维弹球"),
         TEXT("游戏结束"),
-        sprint(TEXT("难度：{}\r\n球数：{}\r\n分数：{}"),
-               get_string_dfct(balls.game_dfct()),
-               balls.ball_num(),
-               balls.score()),
+        wsprint(TEXT("难度：{}\r\n球数：{}\r\n分数：{}"),
+                get_string_dfct(balls.game_dfct()),
+                balls.ball_num(),
+                balls.score()),
         { taskdlg_information },
         { taskdlg_close_button, show_stop_buttons } });
     if (result.button_index == ID_REPLAY)
@@ -462,11 +459,10 @@ bool mainwnd::show_stop()
     return false;
 }
 
-TASKDIALOG_BUTTON show_close_buttons[] =
-    {
-        { ID_SAVE, TEXT("存档") },
-        { ID_NOSAVE, TEXT("不存档") }
-    };
+TASKDIALOG_BUTTON show_close_buttons[] = {
+    { ID_SAVE, TEXT("存档") },
+    { ID_NOSAVE, TEXT("不存档") }
+};
 bool mainwnd::show_close()
 {
     auto result = show_dialog(taskdlg{
@@ -485,10 +481,9 @@ bool mainwnd::show_close()
     return false;
 }
 
-COMDLG_FILTERSPEC show_close_filter[] =
-    {
-        { TEXT("存档文件"), TEXT("*.balls") }
-    };
+COMDLG_FILTERSPEC show_close_filter[] = {
+    { TEXT("存档文件"), TEXT("*.balls") }
+};
 wstring mainwnd::show_close_record()
 {
     save_item_dlg fdlg;
