@@ -296,7 +296,8 @@ void mainwnd::mmove(window&, const mouse_args& arg)
 {
     POINT cp = get_com_point(arg.pos);
     balls.set_sample(cp.x, cp.y);
-    refresh(false);
+    if (!it)
+        refresh(false);
 }
 
 void mainwnd::kup(window&, const key_args& args)
