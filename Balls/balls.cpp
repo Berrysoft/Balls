@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 
 #include "balls.h"
 #include <ctime>
@@ -20,8 +20,8 @@ double point::size() const
 bounce_side balls::get_bounce_side(int c, int r)
 {
     int result = 0;
-    //Êµ¼ÊÉÏÖ»Ğè¿¼ÂÇ8ÖÖ¿ÉÄÜ
-    //Ç°ËÄÖÖÓĞ¿ÉÄÜÍ¬Ê±ÓĞÁ½¸ö³ÉÁ¢£¬Õâ¾ÍÊÇÒ»ÖÖĞÂµÄ¿ÉÄÜ
+    //å®é™…ä¸Šåªéœ€è€ƒè™‘8ç§å¯èƒ½
+    //å‰å››ç§æœ‰å¯èƒ½åŒæ—¶æœ‰ä¸¤ä¸ªæˆç«‹ï¼Œè¿™å°±æ˜¯ä¸€ç§æ–°çš„å¯èƒ½
     if (c == 0 || squares[r][c - 1] > 0)
     {
         result |= left_s;
@@ -38,7 +38,7 @@ bounce_side balls::get_bounce_side(int c, int r)
     {
         result |= bottom_s;
     }
-    //ĞèÒª±£Ö¤ÊÇÍ¹Ö±½Ç
+    //éœ€è¦ä¿è¯æ˜¯å‡¸ç›´è§’
     if (c > 0 && r > 0 && squares[r - 1][c - 1] > 0 && !(result & lt_s))
     {
         result |= left_top;
@@ -116,25 +116,25 @@ serialstream& operator>>(serialstream& stream, balls& balls)
 
 void change_ball(double& speed, double& pos, int side, bool minus)
 {
-    speed = -speed; //ËÙ¶È·´Ïò
-    double off = side - (pos + (minus ? -radius : radius)); //¼ÆËãÆ«ÒÆÁ¿
-    pos += 2 * off; //·´ÏòÔö¼Ó¶ş±¶Æ«ÒÆÁ¿
+    speed = -speed; //é€Ÿåº¦åå‘
+    double off = side - (pos + (minus ? -radius : radius)); //è®¡ç®—åç§»é‡
+    pos += 2 * off; //åå‘å¢åŠ äºŒå€åç§»é‡
 }
 
 void change_ball_arc(ball& p, const point& sc, bool minus)
 {
-    vec off = sc - p.pos; //Á½µã²î¾à
-    vec noff = { off.y, off.x }; //·´µ¯ºó²î¾à
-    p.pos = sc + (minus ? -noff : noff); //·´µ¯
-    vec ns = { -p.speed.y, -p.speed.x }; //ËÙ¶È·´µ¯
-    p.speed = minus ? -ns : ns; //ĞŞÕı
+    vec off = sc - p.pos; //ä¸¤ç‚¹å·®è·
+    vec noff = { off.y, off.x }; //åå¼¹åå·®è·
+    p.pos = sc + (minus ? -noff : noff); //åå¼¹
+    vec ns = { -p.speed.y, -p.speed.x }; //é€Ÿåº¦åå¼¹
+    p.speed = minus ? -ns : ns; //ä¿®æ­£
 }
 
-//»ñÈ¡Ò»¸öÇòÇòĞÄËùÔÚµÄ¸ñ×ÓÖÜÎ§µÄ¸ñ×ÓÇé¿ö
+//è·å–ä¸€ä¸ªçƒçƒå¿ƒæ‰€åœ¨çš„æ ¼å­å‘¨å›´çš„æ ¼å­æƒ…å†µ
 bounce_side get_side(const point& pos, int ls, int ts, int rs, int bs)
 {
     int result = 0;
-    //×ø±êÕûÊı»¯
+    //åæ ‡æ•´æ•°åŒ–
     int x = (int)round(pos.x);
     int y = (int)round(pos.y);
     if (x - radius <= ls)
@@ -158,18 +158,18 @@ bounce_side get_side(const point& pos, int ls, int ts, int rs, int bs)
 
 bool balls_iterator::bounce(ball& p)
 {
-    //¸ñ×Ó×ø±ê
+    //æ ¼å­åæ ‡
     int c = (int)round(p.pos.x) / side_length;
     int r = (int)round(p.pos.y) / side_length;
-    //ËÄ¸ö±ß½ç×ø±ê
+    //å››ä¸ªè¾¹ç•Œåæ ‡
     int ls = c * side_length;
     int rs = (c + 1) * side_length - 1;
     int ts = r * side_length;
     int bs = (r + 1) * side_length - 1;
-    //»ñÈ¡µ±Ç°¸ñ×Ó±ß½çÇé¿ö
+    //è·å–å½“å‰æ ¼å­è¾¹ç•Œæƒ…å†µ
     bounce_side bside = base->get_bounce_side(c, r);
 
-    //´¦Àí¿ØÖÆÔ²
+    //å¤„ç†æ§åˆ¶åœ†
     if (base->squares[r][c] < 0)
     {
         point center = { (double)(ls + side_length / 2), (double)(ts + side_length / 2) };
@@ -188,14 +188,14 @@ bool balls_iterator::bounce(ball& p)
             case ID_RNDTURN:
             case ID_OLDTURN:
             {
-                //¿ØÖÆËæ»ú×ªÏòµÄ½Ç¶È·Ö²¼£¬ÊÇÒ»¸öÕıÌ¬·Ö²¼
-                //Èç¹ûÊÇÆ½¾ù·Ö²¼£¬ÄÑ¶ÈÌ«´ó£¬Ã»ÓĞÓÎÏ·ÌåÑé
+                //æ§åˆ¶éšæœºè½¬å‘çš„è§’åº¦åˆ†å¸ƒï¼Œæ˜¯ä¸€ä¸ªæ­£æ€åˆ†å¸ƒ
+                //å¦‚æœæ˜¯å¹³å‡åˆ†å¸ƒï¼Œéš¾åº¦å¤ªå¤§ï¼Œæ²¡æœ‰æ¸¸æˆä½“éªŒ
                 normal_distribution<double> thetad(atan(p.speed.y / p.speed.x) + p.speed.x < 0 ? 0 : PI, PI / 2);
                 double theta = thetad(base->rnd);
                 double x = abs_speed * cos(theta);
                 double y = abs_speed * sin(theta);
                 p.speed = { x, y };
-                base->squares[r][c] = ID_OLDTURN; //´¥·¢ºó×´Ì¬
+                base->squares[r][c] = ID_OLDTURN; //è§¦å‘åçŠ¶æ€
                 break;
             }
             case ID_DBSCORE:
@@ -206,13 +206,13 @@ bool balls_iterator::bounce(ball& p)
         }
     }
 
-    //Î»ÖÃÔö¼ÓÒ»¸öËÙ¶È
+    //ä½ç½®å¢åŠ ä¸€ä¸ªé€Ÿåº¦
     p.pos += p.speed;
-    //¿´¿´ÏÖÔÚÓĞÃ»ÓĞÅö±Ú
+    //çœ‹çœ‹ç°åœ¨æœ‰æ²¡æœ‰ç¢°å£
     bounce_side nbside = get_side(p.pos, ls, ts, rs, bs);
 
-    //ÊÇ²»ÊÇÅö±Ú²»½öÈ¡¾öÓÚ¸öÇòµÄÅ¬Á¦
-    //»¹Òª¿´ÓĞÃ»ÓĞ±Ú
+    //æ˜¯ä¸æ˜¯ç¢°å£ä¸ä»…å–å†³äºä¸ªçƒçš„åŠªåŠ›
+    //è¿˜è¦çœ‹æœ‰æ²¡æœ‰å£
     if ((bside & left_s) && (nbside & left_s))
     {
         change_ball(p.speed.x, p.pos.x, ls, true);
@@ -241,7 +241,7 @@ bool balls_iterator::bounce(ball& p)
             increase_base_score();
         }
     }
-    //Èç¹ûµ½µ×
+    //å¦‚æœåˆ°åº•
     else if ((bside & bottom_s) && p.pos.y + radius >= client_height && p.speed.y > 0)
     {
         return true;
@@ -285,7 +285,7 @@ bool balls_iterator::bounce(ball& p)
         increase_base_score();
     }
 
-    //Y·½ÏòËÙ¶È²»ÄÜÌ«Ğ¡
+    //Yæ–¹å‘é€Ÿåº¦ä¸èƒ½å¤ªå°
     if (abs(p.speed.y) < 1)
     {
         p.speed.y = p.speed.y > 0 ? 1 : -1;
@@ -303,23 +303,23 @@ balls_iterator& balls_iterator::operator++()
     ++loop;
     if (!end_shooting() && !loop)
     {
-        //Ôö¼ÓÒ»¸öĞÂµÄÇò
+        //å¢åŠ ä¸€ä¸ªæ–°çš„çƒ
         bp.push_back({ base->startp, base->startv });
     }
     for (auto it = bp.begin(); it != bp.end();)
     {
         auto& p = *it;
-        if (bounce(p)) //Åö×²
+        if (bounce(p)) //ç¢°æ’
         {
             endn++;
             if (p.pos.y + radius >= client_height && base->endp == base->startp)
             {
-                //¼ÆËãÏÂÒ»¸öÆğÊ¼Î»ÖÃ
+                //è®¡ç®—ä¸‹ä¸€ä¸ªèµ·å§‹ä½ç½®
                 point tp = p.pos - p.speed;
                 double h = client_height - radius - tp.y;
                 double a = h / p.speed.y * p.speed.x;
                 base->endp = { tp.x + a, tp.y + h };
-                //Çò²»ÄÜ³¬¹ı±ß½ç
+                //çƒä¸èƒ½è¶…è¿‡è¾¹ç•Œ
                 if (base->endp.x > client_width - radius)
                 {
                     base->endp.x = client_width - radius;
@@ -329,7 +329,7 @@ balls_iterator& balls_iterator::operator++()
                     base->endp.x = radius;
                 }
             }
-            it = bp.erase(it); //Ïú»ÙÒ»¸öÇò
+            it = bp.erase(it); //é”€æ¯ä¸€ä¸ªçƒ
         }
         else
         {
@@ -341,7 +341,7 @@ balls_iterator& balls_iterator::operator++()
 
 balls_iterator balls::iterator()
 {
-    return balls_iterator(this); //·µ»ØÒ»¸öĞÂµÄµü´úÆ÷
+    return balls_iterator(this); //è¿”å›ä¸€ä¸ªæ–°çš„è¿­ä»£å™¨
 }
 
 balls_iterator balls::iterator(int x, int y)
@@ -352,7 +352,7 @@ balls_iterator balls::iterator(int x, int y)
 
 bool balls::over() const
 {
-    //Èç¹û×îºóÒ»ĞĞÓĞ¸ñ×Ó£¬ÓÎÏ·½áÊø
+    //å¦‚æœæœ€åä¸€è¡Œæœ‰æ ¼å­ï¼Œæ¸¸æˆç»“æŸ
     for (int c = 0; c < max_c; c++)
     {
         if (squares[max_r - 1][c] > 0)
@@ -365,15 +365,15 @@ bool balls::over() const
 
 bool balls::reset()
 {
-    startp = endp; //ÆğÊ¼Î»ÖÃÉèÖÃÎªÏÂÒ»¸öÆğÊ¼Î»ÖÃ
-    dbscore = false; //·ÖÊı¼Ó±¶È¡Ïû
-    //¸´ÖÆÃ¿Ò»¸ö¸ñ×ÓµÄÖµµ½ÏÂÒ»ĞĞ
+    startp = endp; //èµ·å§‹ä½ç½®è®¾ç½®ä¸ºä¸‹ä¸€ä¸ªèµ·å§‹ä½ç½®
+    dbscore = false; //åˆ†æ•°åŠ å€å–æ¶ˆ
+    //å¤åˆ¶æ¯ä¸€ä¸ªæ ¼å­çš„å€¼åˆ°ä¸‹ä¸€è¡Œ
     for (int r = max_r - 1; r > 0; r--)
     {
         for (int c = 0; c < max_c; c++)
         {
             int t = squares[r - 1][c];
-            //Èç¹û²»ÊÇ´¥·¢¹ıµÄ£¿£¬²Å¸´ÖÆµ½ÏÂÒ»ĞĞ
+            //å¦‚æœä¸æ˜¯è§¦å‘è¿‡çš„ï¼Ÿï¼Œæ‰å¤åˆ¶åˆ°ä¸‹ä¸€è¡Œ
             if (t != ID_OLDTURN)
             {
                 squares[r][c] = t;
@@ -388,8 +388,8 @@ bool balls::reset()
     if (over())
         return false;
 
-    //ÁÙÊ±ÉùÃ÷Ò»¸öÕıÌ¬·Ö²¼
-    //Èı¸öÄÑ¶ÈÔÚÓÎÏ·¿ªÊ¼ÓĞËù½éÉÜ
+    //ä¸´æ—¶å£°æ˜ä¸€ä¸ªæ­£æ€åˆ†å¸ƒ
+    //ä¸‰ä¸ªéš¾åº¦åœ¨æ¸¸æˆå¼€å§‹æœ‰æ‰€ä»‹ç»
     normal_distribution<double> distr;
     switch (dfct)
     {
@@ -403,7 +403,7 @@ bool balls::reset()
         distr = normal_distribution<double>(balln * 1.5, balln / 2.0);
         break;
     }
-    //·Ö²¼¸ñ×Ó£¬Ö»È¡ÕıÖµ
+    //åˆ†å¸ƒæ ¼å­ï¼Œåªå–æ­£å€¼
     for (int c = 0; c < max_c; c++)
     {
         if (prob(rnd) < 0.6)
@@ -416,27 +416,27 @@ bool balls::reset()
             squares[0][c] = 0;
         }
     }
-    //ÕâÀï¶¼ÊÇ¸ù¾İÒ»Ğ©Ô¤¶¨ÒåµÄ¸ÅÂÊ£¬
-    //Éú³É¸÷ÖÖ¿ØÖÆÔ²
-    //Ëæ»ú×ªÏò
+    //è¿™é‡Œéƒ½æ˜¯æ ¹æ®ä¸€äº›é¢„å®šä¹‰çš„æ¦‚ç‡ï¼Œ
+    //ç”Ÿæˆå„ç§æ§åˆ¶åœ†
+    //éšæœºè½¬å‘
     if (prob(rnd) < 0.5)
     {
         int nindex = idxd(rnd);
         squares[0][nindex] = ID_RNDTURN;
     }
-    //¼õºÅ
+    //å‡å·
     if (prob(rnd) < 0.2)
     {
         int nindex = idxd(rnd);
         squares[0][nindex] = ID_DELBALL;
     }
-    //Ë«±¶·Ö
+    //åŒå€åˆ†
     if (prob(rnd) < 0.2)
     {
         int nindex = idxd(rnd);
         squares[0][nindex] = ID_DBSCORE;
     }
-    //¼ÓºÅ£¬ÇòÊı²»ÄÜÌ«¶à
+    //åŠ å·ï¼Œçƒæ•°ä¸èƒ½å¤ªå¤š
     if (balln < INT32_MAX / 2)
     {
         if (prob(rnd) < 0.5)
@@ -450,7 +450,7 @@ bool balls::reset()
 
 void balls::reset_all()
 {
-    //ËùÓĞ±äÁ¿¾ù»Ø¹éÔ­Ê¼
+    //æ‰€æœ‰å˜é‡å‡å›å½’åŸå§‹
     balln = 1;
     startp = { client_width / 2, client_height - radius };
     endp = startp;
@@ -466,12 +466,12 @@ void balls::reset_all()
 
 vec balls::get_start(int x, int y, double speed) const
 {
-    //¼òµ¥µÄÏßĞÔ¹ØÏµ
+    //ç®€å•çš„çº¿æ€§å…³ç³»
     double xx = x - startp.x;
     double yy = y - startp.y;
     double l = sqrt(xx * xx + yy * yy);
     vec result = { speed / l * xx, speed / l * yy };
-    //ÆäÊµ»¹ÊÇ¿ØÖÆËÙ¶ÈµÄy·ÖÁ¿Ğ¡ÓÚ-1
+    //å…¶å®è¿˜æ˜¯æ§åˆ¶é€Ÿåº¦çš„yåˆ†é‡å°äº-1
     if (result.y > -speed / abs_speed)
     {
         result.y = -speed / abs_speed;
@@ -481,21 +481,21 @@ vec balls::get_start(int x, int y, double speed) const
 
 void balls::set_sample(int x, int y)
 {
-    //ËÙ¶ÈÉèÖÃÒ»¸öÊÊµ±Ğ¡µÄÖµ
-    //ÕâÑùºóÆÚ²»ĞèÒªµ÷Õû
+    //é€Ÿåº¦è®¾ç½®ä¸€ä¸ªé€‚å½“å°çš„å€¼
+    //è¿™æ ·åæœŸä¸éœ€è¦è°ƒæ•´
     vec v = get_start(x, y, 0.5);
     point tp = startp;
     int c1, c2, r;
     do
     {
         tp += v;
-        c1 = (int)round(tp.x - radius) / side_length; //×óÉÏ½Ç
-        c2 = (int)round(tp.x + radius) / side_length; //ÓÒÉÏ½Ç
+        c1 = (int)round(tp.x - radius) / side_length; //å·¦ä¸Šè§’
+        c2 = (int)round(tp.x + radius) / side_length; //å³ä¸Šè§’
         r = (int)round(tp.y - radius) / side_length;
-    } while (tp.x >= radius && tp.x <= client_width - radius && tp.y >= radius && //²»³¬¹ı±ß½ç
-             (c1 >= 0 && c1 < max_c && squares[r][c1] <= 0) && //ÅĞ¶Ï×óÉÏ½Ç
-             (c2 >= 0 && c2 < max_c && squares[r][c2] <= 0)); //ÅĞ¶ÏÓÒÉÏ½Ç
-    sampleb = tp - v; //Ô½¹ıÁËËùÒÔÒª¼õ»ØÀ´
+    } while (tp.x >= radius && tp.x <= client_width - radius && tp.y >= radius && //ä¸è¶…è¿‡è¾¹ç•Œ
+             (c1 >= 0 && c1 < max_c && squares[r][c1] <= 0) && //åˆ¤æ–­å·¦ä¸Šè§’
+             (c2 >= 0 && c2 < max_c && squares[r][c2] <= 0)); //åˆ¤æ–­å³ä¸Šè§’
+    sampleb = tp - v; //è¶Šè¿‡äº†æ‰€ä»¥è¦å‡å›æ¥
 }
 
 serialstream& operator<<(serialstream& stream, balls_iterator& it)

@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <event.h>
 
 template <typename V>
@@ -35,7 +35,7 @@ public:
     friend constexpr bool operator==(observable& o1, observable& o2) { return o1.value == o2.value; }
     friend constexpr bool operator!=(observable& o1, observable& o2) { return o1.value != o2.value; }
 
-    //Çø·ÖÇ°ÖÃÓëºóÖÃ++/--
+    //åŒºåˆ†å‰ç½®ä¸åç½®++/--
     observable& operator++()
     {
         on_changed(*this, ++value);

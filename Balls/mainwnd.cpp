@@ -9,6 +9,7 @@
 #include <sf/sformat.hpp>
 
 using namespace std;
+using namespace wil;
 using namespace sf;
 using namespace sw;
 
@@ -203,18 +204,18 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 {
                     hdcbuffer.set_brush(blue_circle_brush);
                     hdcbuffer.draw_ellipse(POINT{ cx, cy } * extend, (int)round(num_height / 2 * extend));
-                    pen_ptr ori = hdcbuffer.set_pen(white_fore_pen);
+                    unique_hpen ori = hdcbuffer.set_pen(white_fore_pen);
                     hdcbuffer.draw_cross(POINT{ cx, cy } * extend, (int)round((num_height - 10 * 2) * extend));
-                    hdcbuffer.set_pen(move(ori));
+                    hdcbuffer.set_pen(std::move(ori));
                     break;
                 }
                 case ID_DELBALL:
                 {
                     hdcbuffer.set_brush(red_ball_brush);
                     hdcbuffer.draw_ellipse(POINT{ cx, cy } * extend, (int)round(num_height / 2 * extend));
-                    pen_ptr ori = hdcbuffer.set_pen(white_fore_pen);
+                    unique_hpen ori = hdcbuffer.set_pen(white_fore_pen);
                     hdcbuffer.draw_line(POINT{ cx - num_height / 2 + 10, cy } * extend, POINT{ cx + num_height / 2 - 10, cy } * extend);
-                    hdcbuffer.set_pen(move(ori));
+                    hdcbuffer.set_pen(std::move(ori));
                     break;
                 }
                 case ID_RNDTURN:
