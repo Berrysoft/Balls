@@ -322,7 +322,7 @@ void mainwnd::kup(window&, const key_args& args)
     }
 }
 
-wstring get_string_dfct(difficulty dfct)
+string_t get_string_dfct(difficulty dfct)
 {
     switch (dfct)
     {
@@ -339,7 +339,7 @@ wstring get_string_dfct(difficulty dfct)
 
 void mainwnd::change_title(::balls&, const balls_changed_args& args)
 {
-    text(wsprint(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
+    text(sprint<char_t>(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
 }
 
 void mainwnd::wclose(window&, bool& handled)
