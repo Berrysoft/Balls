@@ -191,7 +191,7 @@ void mainwnd::main_paint(window&, dev_context& dc)
                 if (g > 127)
                     hdcbuffer.text_color(black_back);
                 hdcbuffer.set_brush(solid_brush{ fillc });
-                hdcbuffer.draw_rect(RECT{ x * side_length + 5, y * side_length + 5, (x + 1) * side_length - 1 - 5, (y + 1) * side_length - 1 - 5 } * extend);
+                hdcbuffer.draw_roundrect(RECT{ x * side_length + 5, y * side_length + 5, (x + 1) * side_length - 1 - 5, (y + 1) * side_length - 1 - 5 } * extend, SIZE{ 10, 10 });
                 hdcbuffer.draw_string(POINT{ cx, cy - num_height / 2 } * extend, to_wstring(t));
                 if (g > 127)
                     hdcbuffer.text_color(white_fore);
@@ -386,7 +386,7 @@ bool mainwnd::get_diff()
                "减号使当前球消失；人民币符号使本轮得分加倍。\r\n"
                "按空格加速，按F7暂停。请不要过于依赖示例球。"),
           TEXT("帮助") },
-        { TEXT("版权所有 © 2018 Berrysoft"), { taskdlg_information } } });
+        { TEXT("版权所有 © 2018-2019 Berrysoft"), { taskdlg_information } } });
     switch (result.button_index)
     {
     case ID_SIMPLE:

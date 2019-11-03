@@ -62,11 +62,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".clang-format">
-      <Filter>资源文件</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <Xml Include="app.manifest">
       <Filter>资源文件</Filter>
     </Xml>
