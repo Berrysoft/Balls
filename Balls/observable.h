@@ -48,12 +48,12 @@ public:
     }
     observable& operator--()
     {
-        on_changed(*this, ++value);
+        on_changed(*this, --value);
         return *this;
     }
     observable& operator--(int)
     {
-        on_changed(*this, ++value);
+        on_changed(*this, --value);
         return *this;
     }
     template <typename U>

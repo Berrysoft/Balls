@@ -67,6 +67,7 @@ balls::balls()
         squares.emplace_back(max_c);
     }
     balln.changed(&balls::balln_changed, this);
+    remain_balln.changed(&balls::remain_balln_changed, this);
     mscore.changed(&balls::score_changed, this);
 }
 
@@ -94,6 +95,7 @@ serialstream& operator>>(serialstream& stream, balls& balls)
     int tballn;
     stream >> tballn;
     balls.balln = tballn;
+    balls.remain_balln = tballn;
     stream >> balls.startp;
     stream >> balls.endp;
     stream >> balls.startv;
@@ -305,6 +307,7 @@ balls_iterator& balls_iterator::operator++()
     {
         //增加一个新的球
         bp.push_back({ base->startp, base->startv });
+        --base->remain_balln;
     }
     for (auto it = bp.begin(); it != bp.end();)
     {
@@ -365,6 +368,7 @@ bool balls::over() const
 
 bool balls::reset()
 {
+    remain_balln = (int)balln;
     startp = endp; //起始位置设置为下一个起始位置
     dbscore = false; //分数加倍取消
     //复制每一个格子的值到下一行
@@ -452,6 +456,7 @@ void balls::reset_all()
 {
     //所有变量均回归原始
     balln = 1;
+    remain_balln = (int)balln;
     startp = { client_width / 2, client_height - radius };
     endp = startp;
     for (int r = 0; r < max_r; r++)

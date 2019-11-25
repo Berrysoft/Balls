@@ -84,7 +84,7 @@ void mainwnd::init()
         balls.reset();
     }
     //强制刷新标题
-    change_title(balls, { balls.ball_num(), balls.score() });
+    change_title(balls, { balls.ball_num(), balls.ball_num(), balls.score() });
     //生成缓存
     HWND dsh = GetDesktopWindow();
     RECT dhr;
@@ -339,7 +339,14 @@ string_t get_string_dfct(difficulty dfct)
 
 void mainwnd::change_title(::balls&, const balls_changed_args& args)
 {
-    text(sprint<char_t>(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
+    if (args.ball_num != args.remain_ball_num)
+    {
+        text(sprint<char_t>(TEXT("二维弹球 - {} 球数：{} 剩余球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.remain_ball_num, args.score));
+    }
+    else
+    {
+        text(sprint<char_t>(TEXT("二维弹球 - {} 球数：{} 分数：{}"), get_string_dfct(balls.game_dfct()), args.ball_num, args.score));
+    }
 }
 
 void mainwnd::wclose(window&, bool& handled)

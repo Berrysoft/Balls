@@ -21,7 +21,7 @@ struct point
     friend constexpr point operator+(const point& p, const vec& v) { return { p.x + v.x, p.y + v.y }; }
     friend constexpr point operator-(const point& p, const vec& v) { return { p.x - v.x, p.y - v.y }; }
 
-	friend constexpr point operator*(const point& p, double extend) { return { p.x * extend, p.y * extend }; }
+    friend constexpr point operator*(const point& p, double extend) { return { p.x * extend, p.y * extend }; }
 
     point& operator+=(const vec& v)
     {
@@ -89,6 +89,7 @@ class balls_iterator;
 struct balls_changed_args
 {
     int ball_num;
+    int remain_ball_num;
     std::size_t score;
 };
 
@@ -96,6 +97,7 @@ class balls
 {
 private:
     observable<int> balln; //下一轮发射球的个数
+    observable<int> remain_balln;
     point startp; //起始位置
     point endp; //下一次的起始位置
     vec startv; //起始速度
@@ -116,6 +118,7 @@ public:
 
     constexpr int ball_num() { return balln; }
     void ball_num(int n) { balln = n; }
+    constexpr int remain_ball_num() { return remain_balln; }
     constexpr std::size_t score() { return mscore; }
     void score(std::size_t s) { mscore = s; }
     constexpr const point& start_pos() { return startp; }
@@ -144,13 +147,15 @@ public:
 private:
     void balln_changed(observable<int>&, const int& n)
     {
-        balls_changed_args args = { n, mscore };
-        on_ball_score_changed(*this, args);
+        on_ball_score_changed(*this, { n, remain_balln, mscore });
+    }
+    void remain_balln_changed(observable<int>&, const int& n)
+    {
+        on_ball_score_changed(*this, { balln, n, mscore });
     }
     void score_changed(observable<std::size_t>&, const std::size_t& s)
     {
-        balls_changed_args args = { balln, s };
-        on_ball_score_changed(*this, args);
+        on_ball_score_changed(*this, { balln, remain_balln, s });
     }
 
     EVENT_SENDER_E(ball_score_changed, balls&, const balls_changed_args&)
