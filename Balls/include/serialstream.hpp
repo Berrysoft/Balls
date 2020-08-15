@@ -1,13 +1,15 @@
-#pragma once
-#include <fstream>
+#ifndef SERIALSTREAM_HPP
+#define SERIALSTREAM_HPP
+
+#include <nowide/fstream.hpp>
 
 class serialstream
 {
 private:
-    std::fstream base_stream;
+    nowide::fstream base_stream;
 
 public:
-    serialstream(const std::wstring& name = {}, std::ios_base::openmode mode = std::ios::in | std::ios::out) : base_stream(name, mode | std::ios::binary) {}
+    serialstream(const std::string& name = {}, std::ios_base::openmode mode = std::ios::in | std::ios::out) : base_stream(name, mode | std::ios::binary) {}
     serialstream(const serialstream&) = delete;
     serialstream(serialstream&& stream) : base_stream(std::move(stream.base_stream)) {}
 
@@ -39,3 +41,5 @@ inline serialstream& operator>>(serialstream& stream, T&& obj)
     stream.base_stream.read((char*)&obj, sizeof(std::remove_reference_t<T>));
     return stream;
 }
+
+#endif // !SERIALSTREAM_HPP

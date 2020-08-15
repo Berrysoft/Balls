@@ -1,0 +1,7 @@
+file(GLOB BALLS_SOURCE "src/*.cpp")
+add_executable(balls ${BALLS_SOURCE})
+if(WIN32)
+	set_target_properties(balls PROPERTIES WIN32_EXECUTABLE ON)
+endif()
+target_include_directories(balls PUBLIC include)
+target_link_libraries(balls xaml_ui_controls xaml_ui_canvas xaml_ui_appmain nowide)

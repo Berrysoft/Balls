@@ -1,6 +1,4 @@
-﻿#include "pch.h"
-
-#include "mainwnd.h"
+﻿#include "mainwnd.h"
 
 using namespace sw;
 

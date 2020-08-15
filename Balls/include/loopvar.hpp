@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿#ifndef LOOPVAR_HPP
+#define LOOPVAR_HPP
+
 #include <limits>
 
 template <typename T>
@@ -55,3 +57,5 @@ public:
         return t;
     }
 };
+
+#endif // !LOOPVAR_HPP
