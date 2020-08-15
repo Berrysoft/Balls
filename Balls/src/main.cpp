@@ -1,10 +1,12 @@
-﻿#include "mainwnd.h"
+﻿#include <main_window.h>
+#include <xaml/ui/application.h>
 
-using namespace sw;
+using namespace std;
 
-INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
+xaml_result XAML_CALL xaml_main(xaml_application* app, int* pcode) noexcept
 {
-    init_app(hInstance, lpCmdLine, nCmdShow);
-    mainwnd wnd;
-    return current_app.run(wnd);
+    xaml_ptr<balls_main_window> wnd;
+    XAML_RETURN_IF_FAILED(balls_main_window_new(&wnd));
+    XAML_RETURN_IF_FAILED(wnd->show());
+    return app->run(pcode);
 }
