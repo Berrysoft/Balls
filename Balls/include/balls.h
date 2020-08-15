@@ -72,6 +72,8 @@ XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0x
     XAML_PROP(sample_position, type, xaml_point*, xaml_point XAML_CONST_REF); \
     XAML_METHOD(get_is_double_score, type, bool*);                            \
     XAML_METHOD(get_map, type, xaml_vector**);                                \
+    XAML_METHOD(get_is_over, type, bool*);                                    \
+    XAML_METHOD(set_sample, type, xaml_point XAML_CONST_REF);                 \
     XAML_METHOD(start, type, balls_map_enumerator**);                         \
     XAML_METHOD(reset, type, bool*);                                          \
     XAML_METHOD(reset_all, type)

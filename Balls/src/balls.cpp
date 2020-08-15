@@ -1,9 +1,12 @@
 ﻿#include <balls.h>
 #include <ctime>
+#include <loopvar.hpp>
+#include <numbers>
 #include <random>
 #include <xaml/event.h>
 
 using namespace std;
+using std::numbers::pi;
 
 enum bounce_side
 {
@@ -75,9 +78,15 @@ struct balls_map_internal
     XAML_PROP_IMPL_BASE(is_double_score, bool, bool*)
     XAML_PROP_PTR_IMPL_BASE(map, xaml_vector)
 
+    xaml_result XAML_CALL get_is_over(bool*) noexcept;
+
     xaml_result XAML_CALL start(balls_map_enumerator**) noexcept;
     xaml_result XAML_CALL reset(bool*) noexcept;
     xaml_result XAML_CALL reset_all() noexcept;
+
+    xaml_point get_start(xaml_point const& p, double speed) const noexcept;
+
+    xaml_result set_sample(xaml_point const& p) noexcept;
 
     xaml_result XAML_CALL init() noexcept;
 
@@ -86,7 +95,7 @@ struct balls_map_internal
     int32_t m_squares[balls_max_columns][balls_max_rows];
 
     mt19937 m_random;
-    uniform_int_distribution<int> m_index_dist;
+    uniform_int_distribution<int32_t> m_index_dist;
     uniform_real_distribution<double> m_prob_dist;
 };
 
@@ -109,6 +118,8 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
     XAML_PROP_INTERNAL_IMPL_BASE(is_double_score, bool*)
     XAML_PROP_INTERNAL_IMPL_BASE(map, xaml_vector**)
 
+    XAML_PROP_INTERNAL_IMPL_BASE(is_over, bool*)
+
     xaml_result XAML_CALL start(balls_map_enumerator** ptr) noexcept override { return m_internal.start(ptr); }
     xaml_result XAML_CALL reset(bool* pvalue) noexcept override { return m_internal.reset(pvalue); }
     xaml_result XAML_CALL reset_all() noexcept override { return m_internal.reset_all(); }
@@ -118,6 +129,39 @@ xaml_result XAML_CALL balls_map_new(balls_map** ptr) noexcept
 {
     return xaml_object_init<balls_map_impl>(ptr);
 }
+
+struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, balls_map_enumerator, xaml_enumerator, xaml_object>
+{
+    balls_map_internal* m_base;
+
+    int32_t m_ball_num;
+    int32_t m_stopped_num;
+    loopvar<int32_t> m_loop;
+    xaml_ptr<xaml_vector> m_current_balls;
+
+    balls_map_enumerator_impl() noexcept : m_stopped_num(0), m_loop(3, 0, 3) {}
+
+    xaml_result XAML_CALL move_next(bool* pvalue) noexcept override;
+    xaml_result XAML_CALL get_current(xaml_object** ptr) noexcept override;
+
+    xaml_result XAML_CALL bounce(balls_ball& p, bool* pvalue) noexcept;
+    xaml_result XAML_CALL increase_base_score() noexcept;
+
+    xaml_result XAML_CALL is_end_shooting(bool* pvalue) noexcept
+    {
+        int32_t size;
+        XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
+        return size + m_stopped_num >= m_ball_num;
+    }
+
+    xaml_result XAML_CALL init(balls_map_internal* base) noexcept
+    {
+        m_base = base;
+        m_ball_num = m_base->m_ball_num;
+        XAML_RETURN_IF_FAILED(xaml_vector_new(&m_current_balls));
+        return XAML_S_OK;
+    }
+};
 
 bounce_side balls_map_internal::get_bounce_side(int32_t c, int32_t r) noexcept
 {
@@ -220,58 +264,64 @@ static constexpr bounce_side get_side(const xaml_point& pos, int ls, int ts, int
     return (bounce_side)result;
 }
 
-bool balls_iterator::bounce(ball& p)
+constexpr double distance(const xaml_point& p) noexcept
+{
+    return sqrt(p.x * p.x + p.y * p.y);
+}
+
+xaml_result balls_map_enumerator_impl::bounce(balls_ball& p, bool* pvalue) noexcept
 {
     //格子坐标
-    int c = (int)round(p.pos.x) / side_length;
-    int r = (int)round(p.pos.y) / side_length;
+    int c = (int)round(p.pos.x) / balls_side_length;
+    int r = (int)round(p.pos.y) / balls_side_length;
     //四个边界坐标
-    int ls = c * side_length;
-    int rs = (c + 1) * side_length - 1;
-    int ts = r * side_length;
-    int bs = (r + 1) * side_length - 1;
+    int ls = c * balls_side_length;
+    int rs = (c + 1) * balls_side_length - 1;
+    int ts = r * balls_side_length;
+    int bs = (r + 1) * balls_side_length - 1;
     //获取当前格子边界情况
-    bounce_side bside = base->get_bounce_side(c, r);
+    bounce_side bside = m_base->get_bounce_side(c, r);
 
     //处理控制圆
-    if (base->squares[r][c] < 0)
+    if (m_base->m_squares[r][c] < 0)
     {
-        point center = { (double)(ls + side_length / 2), (double)(ts + side_length / 2) };
-        double dis = (p.pos - center).size();
-        if (dis <= num_height / 2 + radius + 10)
+        xaml_point center = { (double)(ls + balls_side_length / 2), (double)(ts + balls_side_length / 2) };
+        double dis = distance(p.pos - center);
+        if (dis <= balls_num_size / 2 + balls_radius + 10)
         {
-            switch (base->squares[r][c])
+            switch (m_base->m_squares[r][c])
             {
-            case ID_NEWBALL:
-                ++base->balln;
-                base->squares[r][c] = 0;
+            case balls_special_new_ball:
+                ++m_base->m_ball_num;
+                m_base->m_squares[r][c] = 0;
                 break;
-            case ID_DELBALL:
-                base->squares[r][c] = 0;
-                return true;
-            case ID_RNDTURN:
-            case ID_OLDTURN:
+            case balls_special_delete_ball:
+                m_base->m_squares[r][c] = 0;
+                *pvalue = true;
+                return XAML_S_OK;
+            case balls_special_random_turn:
+            case balls_special_random_turn_old:
             {
                 //控制随机转向的角度分布，是一个正态分布
                 //如果是平均分布，难度太大，没有游戏体验
-                normal_distribution<double> thetad(atan(p.speed.y / p.speed.x) + p.speed.x < 0 ? 0 : PI, PI / 2);
-                double theta = thetad(base->rnd);
-                double x = abs_speed * cos(theta);
-                double y = abs_speed * sin(theta);
+                normal_distribution<double> thetad(atan(p.speed.y / p.speed.x) + p.speed.x < 0 ? 0 : pi, pi / 2);
+                double theta = thetad(m_base->m_random);
+                double x = balls_abs_speed * cos(theta);
+                double y = balls_abs_speed * sin(theta);
                 p.speed = { x, y };
-                base->squares[r][c] = ID_OLDTURN; //触发后状态
+                m_base->m_squares[r][c] = balls_special_random_turn_old; //触发后状态
                 break;
             }
-            case ID_DBSCORE:
-                base->dbscore = true;
-                base->squares[r][c] = 0;
+            case balls_special_double_score:
+                m_base->m_is_double_score = true;
+                m_base->m_squares[r][c] = 0;
                 break;
             }
         }
     }
 
     //位置增加一个速度
-    p.pos += p.speed;
+    p.pos = p.pos + p.speed;
     //看看现在有没有碰壁
     bounce_side nbside = get_side(p.pos, ls, ts, rs, bs);
 
@@ -282,17 +332,17 @@ bool balls_iterator::bounce(ball& p)
         change_ball(p.speed.x, p.pos.x, ls, true);
         if (c > 0)
         {
-            base->squares[r][c - 1]--;
-            increase_base_score();
+            m_base->m_squares[r][c - 1]--;
+            XAML_RETURN_IF_FAILED(increase_base_score());
         }
     }
     else if ((bside & right_s) && (nbside & right_s))
     {
         change_ball(p.speed.x, p.pos.x, rs, false);
-        if (c < max_c - 1)
+        if (c < balls_max_columns - 1)
         {
-            base->squares[r][c + 1]--;
-            increase_base_score();
+            m_base->m_squares[r][c + 1]--;
+            XAML_RETURN_IF_FAILED(increase_base_score());
         }
     }
 
@@ -301,52 +351,53 @@ bool balls_iterator::bounce(ball& p)
         change_ball(p.speed.y, p.pos.y, ts, true);
         if (r > 0)
         {
-            base->squares[r - 1][c]--;
-            increase_base_score();
+            m_base->m_squares[r - 1][c]--;
+            XAML_RETURN_IF_FAILED(increase_base_score());
         }
     }
     //如果到底
-    else if ((bside & bottom_s) && p.pos.y + radius >= client_height && p.speed.y > 0)
+    else if ((bside & bottom_s) && p.pos.y + balls_radius >= balls_client_height && p.speed.y > 0)
     {
-        return true;
+        *pvalue = true;
+        return XAML_S_OK;
     }
     else if ((bside & bottom_s) && (nbside & bottom_s))
     {
         change_ball(p.speed.y, p.pos.y, bs, false);
-        if (r < max_r - 1)
+        if (r < balls_max_rows - 1)
         {
-            base->squares[r + 1][c]--;
-            increase_base_score();
+            m_base->m_squares[r + 1][c]--;
+            XAML_RETURN_IF_FAILED(increase_base_score());
         }
     }
 
     if ((bside & left_top) && ((nbside & lt_s) == lt_s))
     {
-        point sc = { (double)(ls + radius), (double)(ts + radius) };
+        xaml_point sc = { (double)(ls + balls_radius), (double)(ts + balls_radius) };
         change_ball_arc(p, sc, false);
-        base->squares[r - 1][c - 1]--;
-        increase_base_score();
+        m_base->m_squares[r - 1][c - 1]--;
+        XAML_RETURN_IF_FAILED(increase_base_score());
     }
     else if ((bside & right_top) && ((nbside & rt_s) == rt_s))
     {
-        point sc = { (double)(rs - radius), (double)(ts + radius) };
+        xaml_point sc = { (double)(rs - balls_radius), (double)(ts + balls_radius) };
         change_ball_arc(p, sc, true);
-        base->squares[r - 1][c + 1]--;
-        increase_base_score();
+        m_base->m_squares[r - 1][c + 1]--;
+        XAML_RETURN_IF_FAILED(increase_base_score());
     }
     else if ((bside & left_bottom) && ((nbside & lb_s) == lb_s))
     {
-        point sc = { (double)(ls + radius), (double)(bs - radius) };
+        xaml_point sc = { (double)(ls + balls_radius), (double)(bs - balls_radius) };
         change_ball_arc(p, sc, true);
-        base->squares[r + 1][c - 1]--;
-        increase_base_score();
+        m_base->m_squares[r + 1][c - 1]--;
+        XAML_RETURN_IF_FAILED(increase_base_score());
     }
     else if ((bside & right_bottom) && ((nbside & rb_s) == rb_s))
     {
-        point sc = { (double)(rs - radius), (double)(bs - radius) };
+        xaml_point sc = { (double)(rs - balls_radius), (double)(bs - balls_radius) };
         change_ball_arc(p, sc, false);
-        base->squares[r + 1][c + 1]--;
-        increase_base_score();
+        m_base->m_squares[r + 1][c + 1]--;
+        XAML_RETURN_IF_FAILED(increase_base_score());
     }
 
     //Y方向速度不能太小
@@ -354,245 +405,232 @@ bool balls_iterator::bounce(ball& p)
     {
         p.speed.y = p.speed.y > 0 ? 1 : -1;
     }
-    return false;
+    *pvalue = false;
+    return XAML_S_OK;
 }
 
-void balls_iterator::increase_base_score()
+xaml_result balls_map_enumerator_impl::increase_base_score() noexcept
 {
-    base->dbscore ? base->mscore += 2 : ++base->mscore;
+    return m_base->set_score(m_base->m_score + (m_base->m_is_double_score ? 2 : 1));
 }
 
-balls_iterator& balls_iterator::operator++()
+xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
 {
-    ++loop;
-    if (!end_shooting() && !loop)
+    ++m_loop;
+    bool is_ends;
+    XAML_RETURN_IF_FAILED(is_end_shooting(&is_ends));
+    if (!is_ends && !m_loop)
     {
         //增加一个新的球
-        bp.push_back({ base->startp, base->startv });
-        --base->remain_balln;
+        balls_ball new_ball{ m_base->m_start_position, m_base->m_start_velocity };
+        xaml_ptr<xaml_object> box;
+        XAML_RETURN_IF_FAILED(xaml_box_value(new_ball, &box));
+        XAML_RETURN_IF_FAILED(m_current_balls->append(box));
+        XAML_RETURN_IF_FAILED(m_base->set_remain_ball_num(m_base->m_remain_ball_num - 1));
     }
-    for (auto it = bp.begin(); it != bp.end();)
+    int32_t size;
+    XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
+    for (int32_t i = 0; i < size;)
     {
-        auto& p = *it;
-        if (bounce(p)) //碰撞
+        xaml_ptr<xaml_object> box_ball;
+        XAML_RETURN_IF_FAILED(m_current_balls->get_at(i, &box_ball));
+        xaml_ptr<xaml_box> box;
+        XAML_RETURN_IF_FAILED(box_ball->query(&box));
+        balls_ball ball;
+        XAML_RETURN_IF_FAILED(box->get_value(&ball));
+        bool b;
+        XAML_RETURN_IF_FAILED(bounce(ball, &b));
+        if (b)
         {
-            endn++;
-            if (p.pos.y + radius >= client_height && base->endp == base->startp)
+            m_stopped_num++;
+            if (ball.pos.y + balls_radius >= balls_client_height && m_base->m_end_position == m_base->m_start_position)
             {
                 //计算下一个起始位置
-                point tp = p.pos - p.speed;
-                double h = client_height - radius - tp.y;
-                double a = h / p.speed.y * p.speed.x;
-                base->endp = { tp.x + a, tp.y + h };
+                xaml_point tp = ball.pos - ball.speed;
+                double h = balls_client_height - balls_radius - tp.y;
+                double a = h / ball.speed.y * ball.speed.x;
+                XAML_RETURN_IF_FAILED(m_base->set_end_position({ tp.x + a, tp.y + h }));
                 //球不能超过边界
-                if (base->endp.x > client_width - radius)
+                if (m_base->m_end_position.x > balls_client_width - balls_radius)
                 {
-                    base->endp.x = client_width - radius;
+                    m_base->m_end_position.x = balls_client_width - balls_radius;
                 }
-                else if (base->endp.x < radius)
+                else if (m_base->m_end_position.x < balls_radius)
                 {
-                    base->endp.x = radius;
+                    m_base->m_end_position.x = balls_radius;
                 }
             }
-            it = bp.erase(it); //销毁一个球
+            XAML_RETURN_IF_FAILED(m_current_balls->remove_at(i)); //销毁一个球
         }
         else
         {
-            ++it;
+            i++;
         }
+        box->set_value(ball);
     }
-    return *this;
+    *pvalue = m_ball_num > m_stopped_num;
+    return XAML_S_OK;
 }
 
-balls_iterator balls::iterator()
+xaml_result balls_map_internal::start(balls_map_enumerator** ptr) noexcept
 {
-    return balls_iterator(this); //返回一个新的迭代器
+    return xaml_object_init<balls_map_enumerator_impl>(ptr);
 }
 
-balls_iterator balls::iterator(int x, int y)
-{
-    startv = get_start(x, y);
-    return iterator();
-}
+//balls_iterator balls::iterator(int x, int y)
+//{
+//    startv = get_start(x, y);
+//    return iterator();
+//}
 
-bool balls::over() const
+xaml_result balls_map_internal::get_is_over(bool* pvalue) noexcept
 {
     //如果最后一行有格子，游戏结束
-    for (int c = 0; c < max_c; c++)
+    for (int c = 0; c < balls_max_columns; c++)
     {
-        if (squares[max_r - 1][c] > 0)
+        if (m_squares[balls_max_rows - 1][c] > 0)
         {
-            return true;
+            *pvalue = true;
+            return XAML_S_OK;
         }
     }
-    return false;
+    *pvalue = false;
+    return XAML_S_OK;
 }
 
-bool balls::reset()
+xaml_result balls_map_internal::reset(bool* pvalue) noexcept
 {
-    remain_balln = (int)balln;
-    startp = endp; //起始位置设置为下一个起始位置
-    dbscore = false; //分数加倍取消
+    XAML_RETURN_IF_FAILED(set_remain_ball_num(m_ball_num));
+    m_start_position = m_end_position; //起始位置设置为下一个起始位置
+    m_is_double_score = false; //分数加倍取消
     //复制每一个格子的值到下一行
-    for (int r = max_r - 1; r > 0; r--)
+    for (int r = balls_max_rows - 1; r > 0; r--)
     {
-        for (int c = 0; c < max_c; c++)
+        for (int c = 0; c < balls_max_columns; c++)
         {
-            int t = squares[r - 1][c];
+            int t = m_squares[r - 1][c];
             //如果不是触发过的？，才复制到下一行
-            if (t != ID_OLDTURN)
+            if (t != balls_special_random_turn_old)
             {
-                squares[r][c] = t;
+                m_squares[r][c] = t;
             }
             else
             {
-                squares[r][c] = 0;
+                m_squares[r][c] = 0;
             }
         }
     }
 
-    if (over())
-        return false;
+    bool is_over;
+    XAML_RETURN_IF_FAILED(get_is_over(&is_over));
+    if (is_over)
+    {
+        *pvalue = false;
+        return XAML_S_OK;
+    }
 
     //临时声明一个正态分布
     //三个难度在游戏开始有所介绍
     normal_distribution<double> distr;
-    switch (dfct)
+    switch (m_difficulty)
     {
-    case simple:
-        distr = normal_distribution<double>(balln / 2.0, balln / 6.0);
+    case balls_difficulty_simple:
+        distr = normal_distribution<double>(m_ball_num / 2.0, m_ball_num / 6.0);
         break;
-    case normal:
-        distr = normal_distribution<double>(balln, balln / 3.0);
+    case balls_difficulty_normal:
+        distr = normal_distribution<double>(m_ball_num, m_ball_num / 3.0);
         break;
-    case hard:
-        distr = normal_distribution<double>(balln * 1.5, balln / 2.0);
+    case balls_difficulty_hard:
+        distr = normal_distribution<double>(m_ball_num * 1.5, m_ball_num / 2.0);
         break;
     }
     //分布格子，只取正值
-    for (int c = 0; c < max_c; c++)
+    for (int32_t c = 0; c < balls_max_columns; c++)
     {
-        if (prob(rnd) < 0.6)
+        if (m_prob_dist(m_random) < 0.6)
         {
-            int v = (int)round(distr(rnd));
-            squares[0][c] = v >= 0 ? v : 0;
+            int32_t v = (int32_t)round(distr(m_random));
+            m_squares[0][c] = v >= 0 ? v : 0;
         }
         else
         {
-            squares[0][c] = 0;
+            m_squares[0][c] = 0;
         }
     }
     //这里都是根据一些预定义的概率，
     //生成各种控制圆
     //随机转向
-    if (prob(rnd) < 0.5)
+    if (m_prob_dist(m_random) < 0.5)
     {
-        int nindex = idxd(rnd);
-        squares[0][nindex] = ID_RNDTURN;
+        int32_t nindex = m_index_dist(m_random);
+        m_squares[0][nindex] = balls_special_random_turn;
     }
     //减号
-    if (prob(rnd) < 0.2)
+    if (m_prob_dist(m_random) < 0.2)
     {
-        int nindex = idxd(rnd);
-        squares[0][nindex] = ID_DELBALL;
+        int32_t nindex = m_index_dist(m_random);
+        m_squares[0][nindex] = balls_special_delete_ball;
     }
     //双倍分
-    if (prob(rnd) < 0.2)
+    if (m_prob_dist(m_random) < 0.2)
     {
-        int nindex = idxd(rnd);
-        squares[0][nindex] = ID_DBSCORE;
+        int32_t nindex = m_index_dist(m_random);
+        m_squares[0][nindex] = balls_special_double_score;
     }
     //加号，球数不能太多
-    if (balln < INT32_MAX / 2)
+    if (m_ball_num < numeric_limits<int32_t>::max() / 2)
     {
-        if (prob(rnd) < 0.5)
+        if (m_prob_dist(m_random) < 0.5)
         {
-            int nindex = idxd(rnd);
-            squares[0][nindex] = ID_NEWBALL;
+            int32_t nindex = m_index_dist(m_random);
+            m_squares[0][nindex] = balls_special_new_ball;
         }
     }
-    return true;
+    *pvalue = true;
+    return XAML_S_OK;
 }
 
-void balls::reset_all()
+xaml_result balls_map_internal::reset_all() noexcept
 {
     //所有变量均回归原始
-    balln = 1;
-    remain_balln = (int)balln;
-    startp = { client_width / 2, client_height - radius };
-    endp = startp;
-    for (int r = 0; r < max_r; r++)
-    {
-        for (int c = 0; c < max_c; c++)
-        {
-            squares[r][c] = 0;
-        }
-    }
-    mscore = 0;
+    m_ball_num = 1;
+    XAML_RETURN_IF_FAILED(set_remain_ball_num(m_ball_num));
+    m_start_position = { balls_client_width / 2, balls_client_height - balls_radius };
+    m_end_position = m_start_position;
+    memset(m_squares, 0, sizeof(m_squares));
+    m_score = 0;
 }
 
-vec balls::get_start(int x, int y, double speed) const
+xaml_point balls_map_internal::get_start(const xaml_point& p, double speed) const noexcept
 {
     //简单的线性关系
-    double xx = x - startp.x;
-    double yy = y - startp.y;
-    double l = sqrt(xx * xx + yy * yy);
-    vec result = { speed / l * xx, speed / l * yy };
+    xaml_point pp = p - m_start_position;
+    double l = distance(pp);
+    xaml_point result = speed / l * pp;
     //其实还是控制速度的y分量小于-1
-    if (result.y > -speed / abs_speed)
+    if (result.y > -speed / balls_abs_speed)
     {
-        result.y = -speed / abs_speed;
+        result.y = -speed / balls_abs_speed;
     }
     return result;
 }
 
-void balls::set_sample(int x, int y)
+xaml_result balls_map_internal::set_sample(const xaml_point& p) noexcept
 {
     //速度设置一个适当小的值
     //这样后期不需要调整
-    vec v = get_start(x, y, 0.5);
-    point tp = startp;
-    int c1, c2, r;
+    xaml_point v = get_start(p, 0.5);
+    xaml_point tp = m_start_position;
+    int32_t c1, c2, r;
     do
     {
-        tp += v;
-        c1 = (int)round(tp.x - radius) / side_length; //左上角
-        c2 = (int)round(tp.x + radius) / side_length; //右上角
-        r = (int)round(tp.y - radius) / side_length;
-    } while (tp.x >= radius && tp.x <= client_width - radius && tp.y >= radius && //不超过边界
-             (c1 >= 0 && c1 < max_c && squares[r][c1] <= 0) && //判断左上角
-             (c2 >= 0 && c2 < max_c && squares[r][c2] <= 0)); //判断右上角
-    sampleb = tp - v; //越过了所以要减回来
-}
-
-serialstream& operator<<(serialstream& stream, balls_iterator& it)
-{
-    stream << it.balln;
-    stream << it.endn;
-    stream << (int)it.loop;
-    stream << it.bp.size();
-    for (ball& b : it.bp)
-    {
-        stream << b;
-    }
-    return stream;
-}
-
-serialstream& operator>>(serialstream& stream, balls_iterator& it)
-{
-    stream >> it.balln;
-    stream >> it.endn;
-    int tloop;
-    stream >> tloop;
-    it.loop = tloop;
-    size_t n;
-    stream >> n;
-    it.bp.clear();
-    while (n--)
-    {
-        ball tb;
-        stream >> tb;
-        it.bp.push_back(tb);
-    }
-    return stream;
+        tp = tp + v;
+        c1 = (int32_t)round(tp.x - balls_radius) / balls_side_length; //左上角
+        c2 = (int32_t)round(tp.x + balls_radius) / balls_side_length; //右上角
+        r = (int32_t)round(tp.y - balls_radius) / balls_side_length;
+    } while (tp.x >= balls_radius && tp.x <= balls_client_width - balls_radius && tp.y >= balls_radius && //不超过边界
+             (c1 >= 0 && c1 < balls_max_columns && m_squares[r][c1] <= 0) && //判断左上角
+             (c2 >= 0 && c2 < balls_max_columns && m_squares[r][c2] <= 0)); //判断右上角
+    m_sample_position = tp - v; //越过了所以要减回来
+    return XAML_S_OK;
 }
