@@ -1,205 +1,97 @@
-﻿#pragma once
-#include "loopvar.h"
-#include "observable.h"
-#include "serialstream.h"
-#include <event.h>
-#include <random>
+#ifndef BALLS_H
+#define BALLS_H
 
-typedef struct point vec;
+#ifndef __cplusplus
+    #include <stdbool.h>
+#endif // !__cplusplus
 
-struct point
+#include <xaml/enumerable.h>
+#include <xaml/meta/meta_macros.h>
+#include <xaml/ui/drawing.h>
+
+typedef struct balls_ball balls_ball;
+
+struct balls_ball
 {
-    double x;
-    double y;
-
-    friend constexpr bool operator==(const point& p1, const point& p2) { return p1.x == p2.x && p1.y == p2.y; }
-    friend constexpr bool operator!=(const point& p1, const point& p2) { return !operator==(p1, p2); }
-
-    constexpr point operator+() { return *this; }
-    constexpr point operator-() { return { -x, -y }; }
-
-    friend constexpr point operator+(const point& p, const vec& v) { return { p.x + v.x, p.y + v.y }; }
-    friend constexpr point operator-(const point& p, const vec& v) { return { p.x - v.x, p.y - v.y }; }
-
-    friend constexpr point operator*(const point& p, double extend) { return { p.x * extend, p.y * extend }; }
-
-    point& operator+=(const vec& v)
-    {
-        x += v.x;
-        y += v.y;
-        return *this;
-    }
-    point& operator-=(const vec& v)
-    {
-        x -= v.x;
-        y -= v.y;
-        return *this;
-    }
-
-    operator POINT() const;
-    double size() const;
+    xaml_point pos;
+    xaml_point speed;
 };
 
-struct ball
+XAML_TYPE(balls_ball, { 0x7185ab37, 0xe6a0, 0x418b, { 0x9a, 0xc3, 0x6e, 0x4f, 0x74, 0xcc, 0xea, 0x74 } })
+
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_radius = 20;
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_max_columns = 6;
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_max_rows = 8;
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_side_length = 200;
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_client_width = balls_side_length * balls_max_columns - 1;
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_client_height = balls_side_length * balls_max_rows - 1;
+XAML_CONSTEXPR_VAR double balls_abs_speed = 50.0;
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_num_size = 100;
+
+typedef enum balls_difficulty
 {
-    point pos;
-    vec speed;
+    balls_difficulty_simple,
+    balls_difficulty_normal,
+    balls_difficulty_hard
+} balls_difficulty;
+
+XAML_TYPE(balls_difficulty, { 0x7471241e, 0x2381, 0x4db2, { 0x85, 0x42, 0xd5, 0xe9, 0x26, 0x47, 0x22, 0xe4 } })
+
+typedef enum balls_special_num
+{
+    balls_special_new_ball = -1,
+    balls_special_delete_ball = -2,
+    balls_special_random_turn = -3,
+    balls_special_random_turn_old = -4,
+    balls_special_double_score = -5
+} balls_special_num;
+
+XAML_TYPE(balls_special_num, { 0x7b2a1bd7, 0x2114, 0x4616, { 0x9d, 0x97, 0xf2, 0x2a, 0xf2, 0x02, 0x7c, 0x88 } })
+
+XAML_CLASS(balls_map_enumerator, { 0x4d8f6447, 0x6046, 0x4831, { 0xb4, 0x97, 0xc4, 0xe7, 0x47, 0xad, 0x3d, 0x1e } })
+
+#define BALLS_MAP_ENUMERATOR(type) XAML_VTBL_INHERIT(XAML_ENUMERATOR_VTBL(type))
+
+XAML_DECL_INTERFACE_(balls_map_enumerator, xaml_enumerator)
+{
+    XAML_DECL_VTBL(balls_map_enumerator, BALLS_MAP_ENUMERATOR);
 };
 
-constexpr int radius = 20; //球的半径
-constexpr int max_c = 6; //方块行数
-constexpr int max_r = 8; //方块列数
-constexpr int side_length = 200; //方块边长
-constexpr int client_width = side_length * max_c - 1; //用户区宽度
-constexpr int client_height = side_length * max_r - 1; //用户区高度
-constexpr double abs_speed = 50.0; //速度（像素/帧）
-constexpr int num_height = 100; //数字字号
+XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0xf5, 0x22, 0xa7, 0x1e } })
 
-enum bounce_side
+#define BALLS_MAP_VTBL(type)                                                  \
+    XAML_VTBL_INHERIT(XAML_OBJECT_VTBL(type));                                \
+    XAML_PROP(ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);           \
+    XAML_PROP(remain_ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);    \
+    XAML_PROP(score, type, XAML_STD int32_t*, XAML_STD int32_t);              \
+    XAML_PROP(difficulty, type, balls_difficulty*, balls_difficulty);         \
+    XAML_EVENT(ball_score_changed, type);                                     \
+    XAML_PROP(start_position, type, xaml_point*, xaml_point XAML_CONST_REF);  \
+    XAML_PROP(end_position, type, xaml_point*, xaml_point XAML_CONST_REF);    \
+    XAML_PROP(start_velocity, type, xaml_point*, xaml_point XAML_CONST_REF);  \
+    XAML_PROP(sample_position, type, xaml_point*, xaml_point XAML_CONST_REF); \
+    XAML_METHOD(get_is_double_score, type, bool*);                            \
+    XAML_METHOD(get_map, type, xaml_vector**);                                \
+    XAML_METHOD(start, type, balls_map_enumerator**);                         \
+    XAML_METHOD(reset, type, bool*);                                          \
+    XAML_METHOD(reset_all, type)
+
+XAML_DECL_INTERFACE_(balls_map, xaml_object)
 {
-    left_s = 0x1, //左边
-    top_s = 0x2, //上边
-    right_s = 0x4, //右边
-    bottom_s = 0x8, //下边
-    lt_s = left_s | top_s, //左上角
-    rt_s = right_s | top_s, //右上角
-    lb_s = left_s | bottom_s, //左下角
-    rb_s = right_s | bottom_s, //右下角
-    left_top = 0x10, //在左上角遇到凸直角
-    right_top = 0x20, //在右上角遇到凸直角
-    left_bottom = 0x40, //在左下角遇到凸直角
-    right_bottom = 0x80 //在右下角遇到凸直角
+    XAML_DECL_VTBL(balls_map, BALLS_MAP_VTBL);
 };
 
-enum difficulty
+EXTERN_C xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
+
+typedef struct balls_ball_score_changed_args balls_ball_score_changed_args;
+
+struct balls_ball_score_changed_args
 {
-    simple,
-    normal,
-    hard
+    XAML_STD int32_t ball_num;
+    XAML_STD int32_t remain_ball_num;
+    XAML_STD int32_t score;
 };
 
-#define ID_NEWBALL (-1) //+
-#define ID_DELBALL (-2) //-
-#define ID_RNDTURN (-3) //? 没有被触发
-#define ID_OLDTURN (-4) //? 触发后
-#define ID_DBSCORE (-5) //￥
+XAML_TYPE(balls_ball_score_changed_args, { 0xa813cb25, 0x86fe, 0x4437, { 0xa6, 0x48, 0xe9, 0xe5, 0x59, 0x79, 0x8d, 0x1f } })
 
-class balls_iterator;
-
-struct balls_changed_args
-{
-    int ball_num;
-    int remain_ball_num;
-    std::size_t score;
-};
-
-class balls
-{
-private:
-    observable<int> balln; //下一轮发射球的个数
-    observable<int> remain_balln;
-    point startp; //起始位置
-    point endp; //下一次的起始位置
-    vec startv; //起始速度
-    point sampleb; //示例球
-    bool dbscore; //是否分数加倍
-    observable<std::size_t> mscore; //分数
-    difficulty dfct; //难度
-    std::vector<std::vector<int>> squares; //方块/控制圆/啥也没有
-    std::mt19937 rnd; //随机数发生器
-    std::uniform_int_distribution<int> idxd; //控制特殊控制圆的位置的随机分布（0-5）
-    std::uniform_real_distribution<double> prob; //控制特殊控制圆出现的概率（0-1）
-
-    bounce_side get_bounce_side(int c, int r); //计算那12种可能
-
-public:
-    balls();
-    virtual ~balls() {}
-
-    constexpr int ball_num() { return balln; }
-    void ball_num(int n) { balln = n; }
-    constexpr int remain_ball_num() { return remain_balln; }
-    constexpr std::size_t score() { return mscore; }
-    void score(std::size_t s) { mscore = s; }
-    constexpr const point& start_pos() { return startp; }
-    constexpr const point& end_pos() { return endp; }
-    constexpr const vec& start_veh() { return startv; }
-    void start_veh(const vec& v) { startv = v; }
-    constexpr const point& sample_ball() { return sampleb; }
-    void sample_ball(const point& p) { sampleb = p; }
-    constexpr bool double_score() { return dbscore; }
-    constexpr const std::vector<std::vector<int>>& get_squares() { return squares; }
-    constexpr const difficulty game_dfct() { return dfct; }
-    void game_dfct(difficulty d) { dfct = d; }
-
-    friend class balls_iterator;
-
-    balls_iterator iterator();
-    balls_iterator iterator(int x, int y);
-
-    bool over() const;
-    bool reset();
-    void reset_all();
-
-    vec get_start(int x, int y, double speed = abs_speed) const;
-    void set_sample(int x, int y);
-
-private:
-    void balln_changed(observable<int>&, const int& n)
-    {
-        on_ball_score_changed(*this, { n, remain_balln, mscore });
-    }
-    void remain_balln_changed(observable<int>&, const int& n)
-    {
-        on_ball_score_changed(*this, { balln, n, mscore });
-    }
-    void score_changed(observable<std::size_t>&, const std::size_t& s)
-    {
-        on_ball_score_changed(*this, { balln, remain_balln, s });
-    }
-
-    EVENT_SENDER_E(ball_score_changed, balls&, const balls_changed_args&)
-
-public:
-    friend serialstream& operator<<(serialstream& stream, balls& balls);
-    friend serialstream& operator>>(serialstream& stream, balls& balls);
-};
-
-class balls_iterator
-{
-private:
-    int balln; //本轮总球数
-    int endn; //因为各种原因下场的球数
-    loopvar<int> loop; //循环变量，控制是否发球
-    std::vector<ball> bp; //在场的球
-    balls* base; //创建这个迭代器的实例指针
-
-public:
-    balls_iterator() = default;
-    balls_iterator(balls* base) : balln(base->balln), endn(0), loop(3, 0, 3), base(base) {}
-
-    constexpr const std::vector<ball>& operator*() { return bp; }
-    constexpr const std::vector<ball>* operator->() { return &bp; }
-
-    constexpr operator bool() const { return balln > endn; }
-
-    bool end_shooting() const { return (int)bp.size() + endn >= balln; }
-
-private:
-    bool bounce(ball& p);
-
-    void increase_base_score();
-
-public:
-    balls_iterator& operator++();
-    balls_iterator operator++(int)
-    {
-        balls_iterator result = *this;
-        operator++();
-        return result;
-    }
-
-public:
-    friend serialstream& operator<<(serialstream& stream, balls_iterator& it);
-    friend serialstream& operator>>(serialstream& stream, balls_iterator& it);
-};
+#endif // !BALLS_H

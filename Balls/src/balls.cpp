@@ -1,157 +1,219 @@
-﻿#include "pch.h"
-
-#include "balls.h"
+﻿#include <balls.h>
 #include <ctime>
+#include <random>
+#include <xaml/event.h>
 
 using namespace std;
 
-const double PI = acos(-1);
-
-point::operator POINT() const
+enum bounce_side
 {
-    return { (int)round(x), (int)round(y) };
+    left_s = 0x1, //左边
+    top_s = 0x2, //上边
+    right_s = 0x4, //右边
+    bottom_s = 0x8, //下边
+    lt_s = left_s | top_s, //左上角
+    rt_s = right_s | top_s, //右上角
+    lb_s = left_s | bottom_s, //左下角
+    rb_s = right_s | bottom_s, //右下角
+    left_top = 0x10, //在左上角遇到凸直角
+    right_top = 0x20, //在右上角遇到凸直角
+    left_bottom = 0x40, //在左下角遇到凸直角
+    right_bottom = 0x80 //在右下角遇到凸直角
+};
+
+struct balls_map_internal
+{
+    xaml_object* m_outer_this{ nullptr };
+
+    balls_map_internal() noexcept;
+
+    virtual ~balls_map_internal() {}
+
+    XAML_EVENT_IMPL(ball_score_changed)
+
+    XAML_PROP_IMPL_BASE(ball_num, int32_t, int32_t*)
+    XAML_PROP_IMPL_BASE(remain_ball_num, int32_t, int32_t*)
+    XAML_PROP_IMPL_BASE(score, int32_t, int32_t*)
+
+    xaml_result XAML_CALL set_ball_num(int32_t value) noexcept
+    {
+        if (m_ball_num != value)
+        {
+            m_ball_num = value;
+            return on_ball_score_changed(m_outer_this, balls_ball_score_changed_args{ m_ball_num, m_remain_ball_num, m_score });
+        }
+        return XAML_S_OK;
+    }
+
+    xaml_result XAML_CALL set_remain_ball_num(int32_t value) noexcept
+    {
+        if (m_remain_ball_num != value)
+        {
+            m_remain_ball_num = value;
+            return on_ball_score_changed(m_outer_this, balls_ball_score_changed_args{ m_ball_num, m_remain_ball_num, m_score });
+        }
+        return XAML_S_OK;
+    }
+
+    xaml_result XAML_CALL set_score(int32_t value) noexcept
+    {
+        if (m_score != value)
+        {
+            m_score = value;
+            return on_ball_score_changed(m_outer_this, balls_ball_score_changed_args{ m_ball_num, m_remain_ball_num, m_score });
+        }
+        return XAML_S_OK;
+    }
+
+    XAML_PROP_IMPL(difficulty, balls_difficulty, balls_difficulty*, balls_difficulty)
+
+    XAML_PROP_IMPL(start_position, xaml_point, xaml_point*, xaml_point const&)
+    XAML_PROP_IMPL(end_position, xaml_point, xaml_point*, xaml_point const&)
+    XAML_PROP_IMPL(start_velocity, xaml_point, xaml_point*, xaml_point const&)
+    XAML_PROP_IMPL(sample_position, xaml_point, xaml_point*, xaml_point const&)
+
+    XAML_PROP_IMPL_BASE(is_double_score, bool, bool*)
+    XAML_PROP_PTR_IMPL_BASE(map, xaml_vector)
+
+    xaml_result XAML_CALL start(balls_map_enumerator**) noexcept;
+    xaml_result XAML_CALL reset(bool*) noexcept;
+    xaml_result XAML_CALL reset_all() noexcept;
+
+    xaml_result XAML_CALL init() noexcept;
+
+    bounce_side get_bounce_side(int32_t c, int32_t r) noexcept;
+
+    int32_t m_squares[balls_max_columns][balls_max_rows];
+
+    mt19937 m_random;
+    uniform_int_distribution<int> m_index_dist;
+    uniform_real_distribution<double> m_prob_dist;
+};
+
+struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
+{
+    balls_map_internal m_internal;
+
+    XAML_PROP_INTERNAL_IMPL(ball_num, int32_t*, int32_t)
+    XAML_PROP_INTERNAL_IMPL(remain_ball_num, int32_t*, int32_t)
+    XAML_PROP_INTERNAL_IMPL(score, int32_t*, int32_t)
+    XAML_PROP_INTERNAL_IMPL(difficulty, balls_difficulty*, balls_difficulty)
+
+    XAML_EVENT_INTERNAL_IMPL(ball_score_changed)
+
+    XAML_PROP_INTERNAL_IMPL(start_position, xaml_point*, xaml_point const&)
+    XAML_PROP_INTERNAL_IMPL(end_position, xaml_point*, xaml_point const&)
+    XAML_PROP_INTERNAL_IMPL(start_velocity, xaml_point*, xaml_point const&)
+    XAML_PROP_INTERNAL_IMPL(sample_position, xaml_point*, xaml_point const&)
+
+    XAML_PROP_INTERNAL_IMPL_BASE(is_double_score, bool*)
+    XAML_PROP_INTERNAL_IMPL_BASE(map, xaml_vector**)
+
+    xaml_result XAML_CALL start(balls_map_enumerator** ptr) noexcept override { return m_internal.start(ptr); }
+    xaml_result XAML_CALL reset(bool* pvalue) noexcept override { return m_internal.reset(pvalue); }
+    xaml_result XAML_CALL reset_all() noexcept override { return m_internal.reset_all(); }
+};
+
+xaml_result XAML_CALL balls_map_new(balls_map** ptr) noexcept
+{
+    return xaml_object_init<balls_map_impl>(ptr);
 }
 
-double point::size() const
-{
-    return sqrt(x * x + y * y);
-}
-
-bounce_side balls::get_bounce_side(int c, int r)
+bounce_side balls_map_internal::get_bounce_side(int32_t c, int32_t r) noexcept
 {
     int result = 0;
     //实际上只需考虑8种可能
     //前四种有可能同时有两个成立，这就是一种新的可能
-    if (c == 0 || squares[r][c - 1] > 0)
+    if (c == 0 || m_squares[r][c - 1] > 0)
     {
         result |= left_s;
     }
-    if (r == 0 || squares[r - 1][c] > 0)
+    if (r == 0 || m_squares[r - 1][c] > 0)
     {
         result |= top_s;
     }
-    if (c == max_c - 1 || squares[r][c + 1] > 0)
+    if (c == balls_max_columns - 1 || m_squares[r][c + 1] > 0)
     {
         result |= right_s;
     }
-    if (r == max_r - 1 || squares[r + 1][c] > 0)
+    if (r == balls_max_rows - 1 || m_squares[r + 1][c] > 0)
     {
         result |= bottom_s;
     }
     //需要保证是凸直角
-    if (c > 0 && r > 0 && squares[r - 1][c - 1] > 0 && !(result & lt_s))
+    if (c > 0 && r > 0 && m_squares[r - 1][c - 1] > 0 && !(result & lt_s))
     {
         result |= left_top;
     }
-    if (c < max_c - 1 && r > 0 && squares[r - 1][c + 1] > 0 && !(result & rt_s))
+    if (c < balls_max_columns - 1 && r > 0 && m_squares[r - 1][c + 1] > 0 && !(result & rt_s))
     {
         result |= right_top;
     }
-    if (c > 0 && r < max_r - 1 && squares[r + 1][c - 1] > 0 && !(result & lb_s))
+    if (c > 0 && r < balls_max_rows - 1 && m_squares[r + 1][c - 1] > 0 && !(result & lb_s))
     {
         result |= left_bottom;
     }
-    if (c < max_c - 1 && r < max_r - 1 && squares[r + 1][c + 1] > 0 && !(result & rb_s))
+    if (c < balls_max_columns - 1 && r < balls_max_rows - 1 && m_squares[r + 1][c + 1] > 0 && !(result & rb_s))
     {
         result |= right_bottom;
     }
     return (bounce_side)result;
 }
 
-balls::balls()
-    : balln(1), startp({ client_width / 2, client_height - radius }), endp(startp),
-      dfct(normal), rnd((unsigned int)time(nullptr)), idxd(0, max_c - 1), prob(0, 1)
+balls_map_internal::balls_map_internal()
+    : m_ball_num(1), m_start_position({ balls_client_width / 2, balls_client_height - balls_radius }), m_end_position(m_start_position),
+      m_difficulty(balls_difficulty_normal), m_random((unsigned int)time(nullptr)), m_index_dist(0, balls_max_columns - 1), m_prob_dist(0, 1)
 {
-    for (int r = 0; r < max_r; r++)
-    {
-        squares.emplace_back(max_c);
-    }
-    balln.changed(&balls::balln_changed, this);
-    remain_balln.changed(&balls::remain_balln_changed, this);
-    mscore.changed(&balls::score_changed, this);
 }
 
-serialstream& operator<<(serialstream& stream, balls& balls)
+xaml_result balls_map_internal::init() noexcept
 {
-    stream << (int)balls.balln;
-    stream << balls.startp;
-    stream << balls.endp;
-    stream << balls.startv;
-    stream << (int)balls.dbscore;
-    stream << (size_t)balls.mscore;
-    stream << balls.dfct;
-    for (auto& sr : balls.squares)
-    {
-        for (int s : sr)
-        {
-            stream << s;
-        }
-    }
-    return stream;
+    XAML_RETURN_IF_FAILED(xaml_event_new(&m_ball_score_changed));
+    return XAML_S_OK;
 }
 
-serialstream& operator>>(serialstream& stream, balls& balls)
-{
-    int tballn;
-    stream >> tballn;
-    balls.balln = tballn;
-    balls.remain_balln = tballn;
-    stream >> balls.startp;
-    stream >> balls.endp;
-    stream >> balls.startv;
-    int tdbscore;
-    stream >> tdbscore;
-    balls.dbscore = tdbscore;
-    size_t tscore;
-    stream >> tscore;
-    balls.mscore = tscore;
-    stream >> balls.dfct;
-    for (auto& sr : balls.squares)
-    {
-        for (int& s : sr)
-        {
-            stream >> s;
-        }
-    }
-    return stream;
-}
-
-void change_ball(double& speed, double& pos, int side, bool minus)
+static constexpr void change_ball(double& speed, double& pos, int side, bool minus) noexcept
 {
     speed = -speed; //速度反向
-    double off = side - (pos + (minus ? -radius : radius)); //计算偏移量
+    double off = side - (pos + (minus ? -balls_radius : balls_radius)); //计算偏移量
     pos += 2 * off; //反向增加二倍偏移量
 }
 
-void change_ball_arc(ball& p, const point& sc, bool minus)
+// TODO: move to XamlCpp repo
+constexpr xaml_point operator-(const xaml_point& p) noexcept
 {
-    vec off = sc - p.pos; //两点差距
-    vec noff = { off.y, off.x }; //反弹后差距
+    return { -p.x, -p.y };
+}
+
+static constexpr void change_ball_arc(balls_ball& p, const xaml_point& sc, bool minus) noexcept
+{
+    xaml_point off = sc - p.pos; //两点差距
+    xaml_point noff = { off.y, off.x }; //反弹后差距
     p.pos = sc + (minus ? -noff : noff); //反弹
-    vec ns = { -p.speed.y, -p.speed.x }; //速度反弹
+    xaml_point ns = { -p.speed.y, -p.speed.x }; //速度反弹
     p.speed = minus ? -ns : ns; //修正
 }
 
 //获取一个球球心所在的格子周围的格子情况
-bounce_side get_side(const point& pos, int ls, int ts, int rs, int bs)
+static constexpr bounce_side get_side(const xaml_point& pos, int ls, int ts, int rs, int bs) noexcept
 {
     int result = 0;
     //坐标整数化
     int x = (int)round(pos.x);
     int y = (int)round(pos.y);
-    if (x - radius <= ls)
+    if (x - balls_radius <= ls)
     {
         result |= left_s;
     }
-    if (x + radius >= rs)
+    if (x + balls_radius >= rs)
     {
         result |= right_s;
     }
-    if (y - radius <= ts)
+    if (y - balls_radius <= ts)
     {
         result |= top_s;
     }
-    if (bs < client_height && y + radius >= bs)
+    if (bs < balls_client_height && y + balls_radius >= bs)
     {
         result |= bottom_s;
     }
