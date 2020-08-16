@@ -127,7 +127,7 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
 
 xaml_result XAML_CALL balls_map_new(balls_map** ptr) noexcept
 {
-    return xaml_object_init<balls_map_impl>(ptr);
+    return xaml_object_init_catch<balls_map_impl>(ptr);
 }
 
 struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, balls_map_enumerator, xaml_enumerator, xaml_object>
@@ -502,6 +502,7 @@ xaml_result balls_map_internal::reset(bool* pvalue) noexcept
 {
     XAML_RETURN_IF_FAILED(set_remain_ball_num(m_ball_num));
     m_start_position = m_end_position; //起始位置设置为下一个起始位置
+    m_sample_position = m_start_position;
     m_is_double_score = false; //分数加倍取消
     //复制每一个格子的值到下一行
     for (int r = balls_max_rows - 1; r > 0; r--)
