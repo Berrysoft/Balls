@@ -314,7 +314,7 @@ xaml_result balls_map_enumerator_impl::bounce(balls_ball& p, bool* pvalue) noexc
             switch (m_base->m_squares[r][c])
             {
             case balls_special_new_ball:
-                ++m_base->m_ball_num;
+                XAML_RETURN_IF_FAILED(m_base->set_ball_num(m_base->m_ball_num + 1));
                 m_base->m_squares[r][c] = 0;
                 break;
             case balls_special_delete_ball:
