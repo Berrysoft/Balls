@@ -486,6 +486,7 @@ xaml_result balls_main_window_impl::on_window_size_changed(xaml_ptr<xaml_window>
         dy = (size.height - dh) / 2;
         return m_canvas->invalidate();
     }
+    return XAML_S_OK;
 }
 
 xaml_result balls_main_window_impl::on_window_closing(xaml_ptr<xaml_window>, xaml_ptr<xaml_box> box) noexcept
