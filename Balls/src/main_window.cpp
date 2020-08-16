@@ -24,21 +24,33 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
     xaml_ptr<balls_map_enumerator> m_enumerator{};
 
     double dx, dy, dw, dh;
+    xaml_point mouse_location;
 
     xaml_result XAML_CALL init() noexcept;
     xaml_result XAML_CALL show() noexcept override;
 
     xaml_result XAML_CALL init_balls(bool*) noexcept;
     xaml_result XAML_CALL show_open(bool*) noexcept;
+    xaml_result XAML_CALL show_stop(bool*) noexcept;
 
     xaml_result XAML_CALL on_canvas_redraw(xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>) noexcept;
     xaml_result XAML_CALL on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args) noexcept;
     xaml_result XAML_CALL on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept;
+    xaml_result XAML_CALL on_timer_tick(xaml_ptr<xaml_timer>) noexcept;
+    xaml_result XAML_CALL on_canvas_mouse_up(xaml_ptr<xaml_canvas>, xaml_mouse_button) noexcept;
+    xaml_result XAML_CALL on_canvas_mouse_move(xaml_ptr<xaml_canvas>, xaml_point) noexcept;
 };
 
 xaml_result balls_main_window_impl::init() noexcept
 {
     XAML_RETURN_IF_FAILED(xaml_timer_new(&m_timer));
+    {
+        xaml_ptr<xaml_delegate> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_timer>>(
+            xaml_mem_fn(&balls_main_window_impl::on_timer_tick, this), &callback)));
+        int32_t token;
+        XAML_RETURN_IF_FAILED(m_timer->add_tick(callback, &token));
+    }
 
     XAML_RETURN_IF_FAILED(balls_map_new(&m_map));
     {
@@ -51,6 +63,13 @@ xaml_result balls_main_window_impl::init() noexcept
 
     XAML_RETURN_IF_FAILED(xaml_window_new(&m_window));
     XAML_RETURN_IF_FAILED(m_window->set_size({ balls_client_width, balls_client_height }));
+    {
+        xaml_ptr<xaml_delegate> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
+            xaml_mem_fn(&balls_main_window_impl::on_window_size_changed, this), &callback)));
+        int32_t token;
+        XAML_RETURN_IF_FAILED(m_window->add_size_changed(callback, &token));
+    }
     {
         xaml_ptr<xaml_grid> grid;
         XAML_RETURN_IF_FAILED(xaml_grid_new(&grid));
@@ -67,10 +86,17 @@ xaml_result balls_main_window_impl::init() noexcept
             }
             {
                 xaml_ptr<xaml_delegate> callback;
-                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
-                    xaml_mem_fn(&balls_main_window_impl::on_window_size_changed, this), &callback)));
+                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_mouse_button>(
+                    xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_up, this), &callback)));
                 int32_t token;
-                XAML_RETURN_IF_FAILED(m_window->add_size_changed(callback, &token));
+                XAML_RETURN_IF_FAILED(m_canvas->add_mouse_up(callback, &token));
+            }
+            {
+                xaml_ptr<xaml_delegate> callback;
+                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_point>(
+                    xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_move, this), &callback)));
+                int32_t token;
+                XAML_RETURN_IF_FAILED(m_canvas->add_mouse_move(callback, &token));
             }
             XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
         }
@@ -134,6 +160,13 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 }
 
 xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
+{
+    // TODO
+    *pvalue = false;
+    return XAML_S_OK;
+}
+
+xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
 {
     // TODO
     *pvalue = false;
@@ -394,6 +427,68 @@ xaml_result balls_main_window_impl::on_window_size_changed(xaml_ptr<xaml_window>
     dx = (size.width - dw) / 2;
     dy = (size.height - dh) / 2;
     return m_canvas->invalidate();
+}
+
+xaml_result balls_main_window_impl::on_timer_tick(xaml_ptr<xaml_timer>) noexcept
+{
+    bool move;
+    XAML_RETURN_IF_FAILED(m_enumerator->move_next(&move));
+    if (!move)
+    {
+        m_enumerator = nullptr;
+        XAML_RETURN_IF_FAILED(m_timer->stop());
+        bool reset;
+        XAML_RETURN_IF_FAILED(m_map->reset(&reset));
+        if (!reset)
+        {
+            bool cont;
+            XAML_RETURN_IF_FAILED(show_stop(&cont));
+            if (cont)
+            {
+                bool show;
+                XAML_RETURN_IF_FAILED(init_balls(&show));
+                if (!show) return m_window->close();
+            }
+            else
+            {
+                return m_window->close();
+            }
+        }
+    }
+    return m_canvas->invalidate();
+}
+
+static constexpr xaml_point get_com_point(xaml_point const& delta, xaml_point const& rp, double extend) noexcept
+{
+    return (rp - delta) * extend;
+}
+
+xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_up(xaml_ptr<xaml_canvas>, xaml_mouse_button button) noexcept
+{
+    if (button == xaml_mouse_button_left)
+    {
+        if (!m_enumerator)
+        {
+            double extend = balls_client_width / dw;
+            xaml_point cp = get_com_point({ dx, dy }, mouse_location, extend);
+            XAML_RETURN_IF_FAILED(m_map->start_by(cp, &m_enumerator));
+            XAML_RETURN_IF_FAILED(m_timer->start());
+        }
+    }
+    return XAML_S_OK;
+}
+
+xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_move(xaml_ptr<xaml_canvas>, xaml_point p) noexcept
+{
+    mouse_location = p;
+    double extend = balls_client_width / dw;
+    xaml_point cp = get_com_point({ dx, dy }, mouse_location, extend);
+    XAML_RETURN_IF_FAILED(m_map->set_sample(cp));
+    if (!m_enumerator)
+    {
+        XAML_RETURN_IF_FAILED(m_canvas->invalidate());
+    }
+    return XAML_S_OK;
 }
 
 xaml_result XAML_CALL balls_main_window_new(balls_main_window** ptr) noexcept

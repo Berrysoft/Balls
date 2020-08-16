@@ -81,6 +81,7 @@ struct balls_map_internal
     xaml_result XAML_CALL get_is_over(bool*) noexcept;
 
     xaml_result XAML_CALL start(balls_map_enumerator**) noexcept;
+    xaml_result XAML_CALL start_by(xaml_point const&, balls_map_enumerator**) noexcept;
     xaml_result XAML_CALL reset(bool*) noexcept;
     xaml_result XAML_CALL reset_all() noexcept;
 
@@ -130,6 +131,7 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
     XAML_PROP_INTERNAL_IMPL_BASE(map, balls_map_t const**)
 
     xaml_result XAML_CALL start(balls_map_enumerator** ptr) noexcept override { return m_internal.start(ptr); }
+    xaml_result XAML_CALL start_by(xaml_point const& p, balls_map_enumerator** ptr) noexcept override { return m_internal.start_by(p, ptr); }
     xaml_result XAML_CALL reset(bool* pvalue) noexcept override { return m_internal.reset(pvalue); }
     xaml_result XAML_CALL reset_all() noexcept override { return m_internal.reset_all(); }
 
@@ -491,11 +493,11 @@ xaml_result balls_map_internal::start(balls_map_enumerator** ptr) noexcept
     return xaml_object_init<balls_map_enumerator_impl>(ptr, this);
 }
 
-//balls_iterator balls::iterator(int x, int y)
-//{
-//    startv = get_start(x, y);
-//    return iterator();
-//}
+xaml_result balls_map_internal::start_by(xaml_point const& p, balls_map_enumerator** ptr) noexcept
+{
+    m_start_velocity = get_start(p, balls_abs_speed);
+    return start(ptr);
+}
 
 xaml_result balls_map_internal::get_is_over(bool* pvalue) noexcept
 {
