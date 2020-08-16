@@ -3,6 +3,7 @@
 #include <loopvar.hpp>
 #include <numbers>
 #include <random>
+#include <sf/sformat.hpp>
 #include <xaml/event.h>
 
 using namespace std;
@@ -482,7 +483,8 @@ xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
         {
             i++;
         }
-        box->set_value(ball);
+        XAML_RETURN_IF_FAILED(box->set_value(ball));
+        XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
     }
     *pvalue = m_ball_num > m_stopped_num;
     return XAML_S_OK;

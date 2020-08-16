@@ -46,7 +46,7 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
 
 xaml_result balls_main_window_impl::init() noexcept
 {
-    XAML_RETURN_IF_FAILED(xaml_timer_new(&m_timer));
+    XAML_RETURN_IF_FAILED(xaml_timer_new_interval(10ms, &m_timer));
     {
         xaml_ptr<xaml_delegate> callback;
         XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_timer>>(
@@ -65,6 +65,7 @@ xaml_result balls_main_window_impl::init() noexcept
     }
 
     XAML_RETURN_IF_FAILED(xaml_window_new(&m_window));
+    XAML_RETURN_IF_FAILED(m_window->set_size({ balls_client_width, balls_client_height }));
     {
         xaml_ptr<xaml_delegate> callback;
         XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
@@ -107,10 +108,9 @@ xaml_result balls_main_window_impl::init() noexcept
                 int32_t token;
                 XAML_RETURN_IF_FAILED(m_canvas->add_mouse_move(callback, &token));
             }
-            //XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
-            XAML_RETURN_IF_FAILED(m_window->set_child(m_canvas));
+            XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
         }
-        //XAML_RETURN_IF_FAILED(m_window->set_child(grid));
+        XAML_RETURN_IF_FAILED(m_window->set_child(grid));
     }
 
     return XAML_S_OK;
@@ -123,7 +123,6 @@ xaml_result balls_main_window_impl::show() noexcept
     if (show)
     {
         XAML_RETURN_IF_FAILED(m_window->show());
-        XAML_RETURN_IF_FAILED(m_window->set_size({ 400, 600 }));
     }
     return XAML_S_OK;
 }
@@ -167,8 +166,10 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
         *pvalue = false;
         return XAML_S_OK;
     }
+    XAML_RETURN_IF_FAILED(m_map->reset_all());
     bool dummy;
     XAML_RETURN_IF_FAILED(m_map->reset(&dummy));
+    *pvalue = true;
     return XAML_S_OK;
 }
 
