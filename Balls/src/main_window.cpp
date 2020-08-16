@@ -32,10 +32,13 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
     xaml_result XAML_CALL init_balls(bool*) noexcept;
     xaml_result XAML_CALL show_open(bool*) noexcept;
     xaml_result XAML_CALL show_stop(bool*) noexcept;
+    xaml_result XAML_CALL show_close(bool*) noexcept;
+    xaml_result XAML_CALL show_save(bool*) noexcept;
 
     xaml_result XAML_CALL on_canvas_redraw(xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>) noexcept;
     xaml_result XAML_CALL on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args) noexcept;
     xaml_result XAML_CALL on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept;
+    xaml_result XAML_CALL on_window_closing(xaml_ptr<xaml_window>, xaml_ptr<xaml_box>) noexcept;
     xaml_result XAML_CALL on_timer_tick(xaml_ptr<xaml_timer>) noexcept;
     xaml_result XAML_CALL on_canvas_mouse_up(xaml_ptr<xaml_canvas>, xaml_mouse_button) noexcept;
     xaml_result XAML_CALL on_canvas_mouse_move(xaml_ptr<xaml_canvas>, xaml_point) noexcept;
@@ -62,13 +65,19 @@ xaml_result balls_main_window_impl::init() noexcept
     }
 
     XAML_RETURN_IF_FAILED(xaml_window_new(&m_window));
-    XAML_RETURN_IF_FAILED(m_window->set_size({ balls_client_width, balls_client_height }));
     {
         xaml_ptr<xaml_delegate> callback;
         XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
             xaml_mem_fn(&balls_main_window_impl::on_window_size_changed, this), &callback)));
         int32_t token;
         XAML_RETURN_IF_FAILED(m_window->add_size_changed(callback, &token));
+    }
+    {
+        xaml_ptr<xaml_delegate> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_ptr<xaml_box>>(
+            xaml_mem_fn(&balls_main_window_impl::on_window_closing, this), &callback)));
+        int32_t token;
+        XAML_RETURN_IF_FAILED(m_window->add_closing(callback, &token));
     }
     {
         xaml_ptr<xaml_grid> grid;
@@ -98,9 +107,10 @@ xaml_result balls_main_window_impl::init() noexcept
                 int32_t token;
                 XAML_RETURN_IF_FAILED(m_canvas->add_mouse_move(callback, &token));
             }
-            XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
+            //XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
+            XAML_RETURN_IF_FAILED(m_window->set_child(m_canvas));
         }
-        XAML_RETURN_IF_FAILED(m_window->set_child(grid));
+        //XAML_RETURN_IF_FAILED(m_window->set_child(grid));
     }
 
     return XAML_S_OK;
@@ -111,7 +121,10 @@ xaml_result balls_main_window_impl::show() noexcept
     bool show;
     XAML_RETURN_IF_FAILED(init_balls(&show));
     if (show)
+    {
         XAML_RETURN_IF_FAILED(m_window->show());
+        XAML_RETURN_IF_FAILED(m_window->set_size({ 400, 600 }));
+    }
     return XAML_S_OK;
 }
 
@@ -168,8 +181,51 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
 
 xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
 {
+    xaml_ptr<xaml_string> message, title, instruction;
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("游戏结束，是否重新开始？"), &instruction));
+    balls_difficulty difficulty;
+    XAML_RETURN_IF_FAILED(m_map->get_difficulty(&difficulty));
+    int32_t ball_num;
+    XAML_RETURN_IF_FAILED(m_map->get_ball_num(&ball_num));
+    int32_t score;
+    XAML_RETURN_IF_FAILED(m_map->get_score(&score));
+    XAML_RETURN_IF_FAILED(xaml_string_new(sf::sprint(U("难度：{}\n球数：{}\n分数：{}"), difficulty, ball_num, score), &message));
+    xaml_msgbox_result result;
+    XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, instruction, xaml_msgbox_info, xaml_msgbox_buttons_yes_no, &result));
+    *pvalue = result == xaml_msgbox_result_yes;
+    return XAML_S_OK;
+}
+
+xaml_result balls_main_window_impl::show_close(bool* pvalue) noexcept
+{
+    xaml_ptr<xaml_string> message, title;
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("游戏尚未结束，是否存档？"), &message));
+    xaml_msgbox_result result;
+    XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, nullptr, xaml_msgbox_info, xaml_msgbox_buttons_yes_no_cancel, &result));
+    switch (result)
+    {
+    case xaml_msgbox_result_yes:
+    {
+        XAML_RETURN_IF_FAILED(show_save(pvalue));
+        *pvalue = !*pvalue;
+        return XAML_S_OK;
+    }
+    case xaml_msgbox_result_cancel:
+        *pvalue = true;
+        break;
+    default:
+        *pvalue = false;
+        break;
+    }
+    return XAML_S_OK;
+}
+
+xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
+{
     // TODO
-    *pvalue = false;
+    *pvalue = true;
     return XAML_S_OK;
 }
 
@@ -417,16 +473,36 @@ xaml_result balls_main_window_impl::on_map_ball_score_changed(xaml_ptr<balls_map
 
 xaml_result balls_main_window_impl::on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept
 {
-    xaml_size size;
-    XAML_RETURN_IF_FAILED(m_canvas->get_size(&size));
-    double sidew = (size.width + 1) / balls_max_columns;
-    double sideh = (size.height + 1) / balls_max_rows;
-    double sidel = (min)(sidew, sideh);
-    dw = sidel * balls_max_columns - 1;
-    dh = sidel * balls_max_rows - 1;
-    dx = (size.width - dw) / 2;
-    dy = (size.height - dh) / 2;
-    return m_canvas->invalidate();
+    if (m_canvas)
+    {
+        xaml_size size;
+        XAML_RETURN_IF_FAILED(m_canvas->get_size(&size));
+        double sidew = (size.width + 1) / balls_max_columns;
+        double sideh = (size.height + 1) / balls_max_rows;
+        double sidel = (min)(sidew, sideh);
+        dw = sidel * balls_max_columns - 1;
+        dh = sidel * balls_max_rows - 1;
+        dx = (size.width - dw) / 2;
+        dy = (size.height - dh) / 2;
+        return m_canvas->invalidate();
+    }
+}
+
+xaml_result balls_main_window_impl::on_window_closing(xaml_ptr<xaml_window>, xaml_ptr<xaml_box> box) noexcept
+{
+    bool over;
+    XAML_RETURN_IF_FAILED(m_map->get_is_over(&over));
+    if (!over)
+    {
+        bool started;
+        XAML_RETURN_IF_FAILED(m_timer->get_is_enabled(&started));
+        XAML_RETURN_IF_FAILED(m_timer->stop());
+        bool handled;
+        XAML_RETURN_IF_FAILED(show_close(&handled));
+        XAML_RETURN_IF_FAILED(box->set_value(handled));
+        if (started) XAML_RETURN_IF_FAILED(m_timer->start());
+    }
+    return XAML_S_OK;
 }
 
 xaml_result balls_main_window_impl::on_timer_tick(xaml_ptr<xaml_timer>) noexcept
