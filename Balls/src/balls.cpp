@@ -1,13 +1,18 @@
 ﻿#include <balls.h>
 #include <ctime>
 #include <loopvar.hpp>
-#include <numbers>
 #include <random>
 #include <sf/sformat.hpp>
 #include <xaml/event.h>
 
-using namespace std;
+#if __has_include(<numbers>)
+    #include <numbers>
 using std::numbers::pi;
+#else
+    #define pi M_PI
+#endif // __has_include(<numbers>)
+
+using namespace std;
 
 enum bounce_side
 {

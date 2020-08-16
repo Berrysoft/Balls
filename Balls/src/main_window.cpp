@@ -300,7 +300,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
         XAML_RETURN_IF_FAILED(dc->fill_rect(brback, { dx, dy, dw, dh }));
     }
     double extend = dw / balls_client_width;
-    xaml_drawing_font font{ U("Segoe UI"), balls_num_size * extend, false, false, xaml_halignment_center, xaml_valignment_center };
+    xaml_drawing_font font{ U("Arial"), balls_num_size * extend, false, false, xaml_halignment_center, xaml_valignment_center };
     //只有没有发射球的时候才画示例球
     if (!m_enumerator)
     {
