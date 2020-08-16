@@ -140,7 +140,7 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
     return XAML_S_OK;
 }
 
-static constexpr xaml_color get_equare_color(int32_t t) noexcept
+static constexpr xaml_color get_square_color(int32_t t) noexcept
 {
     constexpr int power = 4;
     constexpr int range = 256 / power;
@@ -168,8 +168,35 @@ static constexpr xaml_color get_equare_color(int32_t t) noexcept
     }
 }
 
+static constexpr xaml_rectangle get_ball_rect(xaml_point const& delta, xaml_point const& p, double extend) noexcept
+{
+    xaml_point real_p = p * extend + delta;
+    double r = balls_radius * extend;
+    return { real_p.x - r, real_p.y - r, 2 * r, 2 * r };
+}
+
+static constexpr xaml_color get_circle_fill(int32_t t) noexcept
+{
+    switch (t)
+    {
+    case balls_special_new_ball:
+        return colors::blue;
+    case balls_special_delete_ball:
+        return colors::red;
+    case balls_special_random_turn:
+        return colors::purple;
+    case balls_special_random_turn_old:
+        return colors::red;
+    case balls_special_double_score:
+        return colors::yellow;
+    default:
+        return {};
+    }
+}
+
 xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, xaml_ptr<xaml_drawing_context> dc) noexcept
 {
+    //画背景
     {
         xaml_ptr<xaml_solid_brush> bback;
         XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::black, &bback));
@@ -179,22 +206,142 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     }
     {
         xaml_ptr<xaml_solid_brush> brback;
-        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::dark_gray, &brback));
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new({ 255, 31, 31, 31 }, &brback));
         XAML_RETURN_IF_FAILED(dc->fill_rect(brback, { dx, dy, dw, dh }));
     }
     double extend = dw / balls_client_width;
     xaml_drawing_font font{ U("Segoe UI"), balls_num_size * extend, false, false, xaml_halignment_center, xaml_valignment_center };
+    //只有没有发射球的时候才画示例球
     if (!m_enumerator)
     {
         xaml_ptr<xaml_solid_brush> sample;
         XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::pale_violet_red, &sample));
         xaml_point sample_pos;
         XAML_RETURN_IF_FAILED(m_map->get_sample_position(&sample_pos));
-        sample_pos = (sample_pos * extend) + xaml_point{ dx, dy };
-        double r = balls_radius * extend;
-        XAML_RETURN_IF_FAILED(dc->fill_ellipse(sample, { sample_pos.x - r, sample_pos.y - r, 2 * r, 2 * r }));
+        XAML_RETURN_IF_FAILED(dc->fill_ellipse(sample, get_ball_rect({ dx, dy }, sample_pos, extend)));
     }
-    // TODO
+    //如果加倍就画黄色球，反之画红色球
+    xaml_ptr<xaml_solid_brush> bball;
+    bool double_score;
+    XAML_RETURN_IF_FAILED(m_map->get_is_double_score(&double_score));
+    XAML_RETURN_IF_FAILED(xaml_solid_brush_new(double_score ? colors::yellow : colors::red, &bball));
+    xaml_point start_pos;
+    XAML_RETURN_IF_FAILED(m_map->get_start_position(&start_pos));
+    //球没有发射完才画起始球
+    bool end_shooting = false;
+    if (m_enumerator)
+    {
+        XAML_RETURN_IF_FAILED(m_enumerator->get_is_end_shooting(&end_shooting));
+    }
+    if (!end_shooting)
+    {
+        XAML_RETURN_IF_FAILED(dc->fill_ellipse(bball, get_ball_rect({ dx, dy }, start_pos, extend)));
+    }
+    //确定了下一个起始位置才画终止球
+    xaml_point end_pos;
+    XAML_RETURN_IF_FAILED(m_map->get_end_position(&end_pos));
+    if (start_pos != end_pos)
+    {
+        XAML_RETURN_IF_FAILED(dc->fill_ellipse(bball, get_ball_rect({ dx, dy }, end_pos, extend)));
+    }
+    //画所有运动中的球
+    if (m_enumerator)
+    {
+        xaml_ptr<xaml_vector> balls;
+        {
+            xaml_ptr<xaml_object> obj;
+            XAML_RETURN_IF_FAILED(m_enumerator->get_current(&obj));
+            XAML_RETURN_IF_FAILED(obj->query(&balls));
+        }
+        XAML_FOREACH_START(ball_item, balls);
+        {
+            balls_ball b;
+            XAML_RETURN_IF_FAILED(xaml_unbox_value(ball_item, &b));
+            XAML_RETURN_IF_FAILED(dc->fill_ellipse(bball, get_ball_rect({ dx, dy }, b.pos, extend)));
+        }
+        XAML_FOREACH_END();
+    }
+    //下面的都是绿边框
+    xaml_ptr<xaml_brush_pen> pborder;
+    XAML_RETURN_IF_FAILED(xaml_brush_pen_new_solid(colors::green, 3, &pborder));
+    balls_map_t const* pmap;
+    XAML_RETURN_IF_FAILED(m_map->get_map(&pmap));
+    for (int32_t x = 0; x < balls_max_columns; x++)
+    {
+        for (int32_t y = 0; y < balls_max_rows; y++)
+        {
+            int32_t t = (*pmap)[y][x];
+            double cx = x * balls_side_length + balls_side_length / 2;
+            double cy = y * balls_side_length + balls_side_length / 2;
+            xaml_point real_c = xaml_point{ cx, cy } * extend;
+            xaml_point center = real_c + xaml_point{ dx, dy };
+            if (t > 0)
+            {
+                //方块的填充色会变化
+                xaml_color fillc = get_square_color(t);
+                xaml_ptr<xaml_solid_brush> btext;
+                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(fillc.g > 127 ? colors::black : colors::white, &btext));
+                xaml_ptr<xaml_solid_brush> bfill;
+                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(fillc, &bfill));
+                xaml_rectangle round_rect = xaml_rectangle{ (double)(x * balls_side_length + 5), (double)(y * balls_side_length + 5), (double)(balls_side_length - 11), (double)(balls_side_length - 11) } * extend;
+                round_rect.x += dx;
+                round_rect.y += dy;
+                xaml_size radius = xaml_size{ 10, 10 } * extend;
+                XAML_RETURN_IF_FAILED(dc->fill_round_rect(bfill, round_rect, radius));
+                XAML_RETURN_IF_FAILED(dc->draw_round_rect(pborder, round_rect, radius));
+                xaml_ptr<xaml_string> text;
+                XAML_RETURN_IF_FAILED(xaml_string_new(to_string(t), &text));
+                XAML_RETURN_IF_FAILED(dc->draw_string(btext, font, center, text));
+            }
+            else
+            {
+                xaml_ptr<xaml_solid_brush> bcircle;
+                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(get_circle_fill(t), &bcircle));
+                double r = balls_num_size * extend / 2;
+                xaml_rectangle circle_rect = { dx + real_c.x - r, dy + real_c.y - r, 2 * r, 2 * r };
+                if (t < 0 && t >= balls_special_double_score)
+                {
+                    XAML_RETURN_IF_FAILED(dc->fill_ellipse(bcircle, circle_rect));
+                    XAML_RETURN_IF_FAILED(dc->draw_ellipse(pborder, circle_rect));
+                }
+                xaml_ptr<xaml_solid_brush> bfore;
+                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::white, &bfore));
+                xaml_ptr<xaml_brush_pen> pfore;
+                XAML_RETURN_IF_FAILED(xaml_brush_pen_new(bfore, 3, &pfore));
+                switch (t)
+                {
+                case balls_special_new_ball:
+                {
+                    double length = (balls_num_size - 20) * extend / 2;
+                    XAML_RETURN_IF_FAILED(dc->draw_line(pfore, { center.x, center.y - length }, { center.x, center.y + length }));
+                    XAML_RETURN_IF_FAILED(dc->draw_line(pfore, { center.x - length, center.y }, { center.x + length, center.y }));
+                    break;
+                }
+                case balls_special_delete_ball:
+                {
+                    double length = (balls_num_size - 20) * extend / 2;
+                    XAML_RETURN_IF_FAILED(dc->draw_line(pfore, { center.x - length, center.y }, { center.x + length, center.y }));
+                    break;
+                }
+                case balls_special_random_turn:
+                case balls_special_random_turn_old:
+                {
+                    xaml_ptr<xaml_string> text;
+                    XAML_RETURN_IF_FAILED(xaml_string_new(U("?"), &text));
+                    XAML_RETURN_IF_FAILED(dc->draw_string(bfore, font, center, text));
+                    break;
+                }
+                case balls_special_double_score:
+                {
+                    xaml_ptr<xaml_string> text;
+                    XAML_RETURN_IF_FAILED(xaml_string_new(U("￥"), &text));
+                    XAML_RETURN_IF_FAILED(dc->draw_string(bfore, font, center, text));
+                    break;
+                }
+                }
+            }
+        }
+    }
     return XAML_S_OK;
 }
 

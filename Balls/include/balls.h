@@ -50,12 +50,16 @@ XAML_TYPE(balls_special_num, { 0x7b2a1bd7, 0x2114, 0x4616, { 0x9d, 0x97, 0xf2, 0
 
 XAML_CLASS(balls_map_enumerator, { 0x4d8f6447, 0x6046, 0x4831, { 0xb4, 0x97, 0xc4, 0xe7, 0x47, 0xad, 0x3d, 0x1e } })
 
-#define BALLS_MAP_ENUMERATOR(type) XAML_VTBL_INHERIT(XAML_ENUMERATOR_VTBL(type))
+#define BALLS_MAP_ENUMERATOR(type)                 \
+    XAML_VTBL_INHERIT(XAML_ENUMERATOR_VTBL(type)); \
+    XAML_METHOD(get_is_end_shooting, type, bool*)
 
 XAML_DECL_INTERFACE_(balls_map_enumerator, xaml_enumerator)
 {
     XAML_DECL_VTBL(balls_map_enumerator, BALLS_MAP_ENUMERATOR);
 };
+
+typedef XAML_STD int32_t balls_map_t[balls_max_rows][balls_max_columns];
 
 XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0xf5, 0x22, 0xa7, 0x1e } })
 
@@ -74,6 +78,7 @@ XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0x
     XAML_METHOD(get_map, type, xaml_vector**);                                \
     XAML_METHOD(get_is_over, type, bool*);                                    \
     XAML_METHOD(set_sample, type, xaml_point XAML_CONST_REF);                 \
+    XAML_METHOD(get_map, type, balls_map_t const**);                          \
     XAML_METHOD(start, type, balls_map_enumerator**);                         \
     XAML_METHOD(reset, type, bool*);                                          \
     XAML_METHOD(reset_all, type)

@@ -92,11 +92,17 @@ struct balls_map_internal
 
     bounce_side get_bounce_side(int32_t c, int32_t r) noexcept;
 
-    int32_t m_squares[balls_max_columns][balls_max_rows];
+    balls_map_t m_squares{};
 
     mt19937 m_random;
     uniform_int_distribution<int32_t> m_index_dist;
     uniform_real_distribution<double> m_prob_dist;
+
+    xaml_result XAML_CALL get_map(balls_map_t const** ptr) noexcept
+    {
+        *ptr = &m_squares;
+        return XAML_S_OK;
+    }
 };
 
 struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
@@ -121,6 +127,7 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
     XAML_PROP_INTERNAL_IMPL_BASE(map, xaml_vector**)
 
     XAML_PROP_INTERNAL_IMPL_BASE(is_over, bool*)
+    XAML_PROP_INTERNAL_IMPL_BASE(map, balls_map_t const**)
 
     xaml_result XAML_CALL start(balls_map_enumerator** ptr) noexcept override { return m_internal.start(ptr); }
     xaml_result XAML_CALL reset(bool* pvalue) noexcept override { return m_internal.reset(pvalue); }
@@ -153,7 +160,7 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
     xaml_result XAML_CALL bounce(balls_ball& p, bool* pvalue) noexcept;
     xaml_result XAML_CALL increase_base_score() noexcept;
 
-    xaml_result XAML_CALL is_end_shooting(bool* pvalue) noexcept
+    xaml_result XAML_CALL get_is_end_shooting(bool* pvalue) noexcept override
     {
         int32_t size;
         XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
@@ -425,7 +432,7 @@ xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
 {
     ++m_loop;
     bool is_ends;
-    XAML_RETURN_IF_FAILED(is_end_shooting(&is_ends));
+    XAML_RETURN_IF_FAILED(get_is_end_shooting(&is_ends));
     if (!is_ends && !m_loop)
     {
         //增加一个新的球
