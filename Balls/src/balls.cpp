@@ -101,7 +101,9 @@ struct balls_map_internal
 
 struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
 {
-    balls_map_internal m_internal;
+    balls_map_internal m_internal{};
+
+    balls_map_impl() noexcept { m_internal.m_outer_this = this; }
 
     XAML_PROP_INTERNAL_IMPL(ball_num, int32_t*, int32_t)
     XAML_PROP_INTERNAL_IMPL(remain_ball_num, int32_t*, int32_t)
@@ -123,11 +125,15 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
     xaml_result XAML_CALL start(balls_map_enumerator** ptr) noexcept override { return m_internal.start(ptr); }
     xaml_result XAML_CALL reset(bool* pvalue) noexcept override { return m_internal.reset(pvalue); }
     xaml_result XAML_CALL reset_all() noexcept override { return m_internal.reset_all(); }
+
+    xaml_result XAML_CALL set_sample(xaml_point const& p) noexcept override { return m_internal.set_sample(p); }
+
+    xaml_result XAML_CALL init() noexcept { return m_internal.init(); }
 };
 
 xaml_result XAML_CALL balls_map_new(balls_map** ptr) noexcept
 {
-    return xaml_object_init_catch<balls_map_impl>(ptr);
+    return xaml_object_init<balls_map_impl>(ptr);
 }
 
 struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, balls_map_enumerator, xaml_enumerator, xaml_object>
@@ -142,7 +148,7 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
     balls_map_enumerator_impl() noexcept : m_stopped_num(0), m_loop(3, 0, 3) {}
 
     xaml_result XAML_CALL move_next(bool* pvalue) noexcept override;
-    xaml_result XAML_CALL get_current(xaml_object** ptr) noexcept override;
+    xaml_result XAML_CALL get_current(xaml_object** ptr) noexcept override { return m_current_balls.query(ptr); }
 
     xaml_result XAML_CALL bounce(balls_ball& p, bool* pvalue) noexcept;
     xaml_result XAML_CALL increase_base_score() noexcept;
@@ -151,7 +157,8 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
     {
         int32_t size;
         XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
-        return size + m_stopped_num >= m_ball_num;
+        *pvalue = size + m_stopped_num >= m_ball_num;
+        return XAML_S_OK;
     }
 
     xaml_result XAML_CALL init(balls_map_internal* base) noexcept
@@ -204,7 +211,7 @@ bounce_side balls_map_internal::get_bounce_side(int32_t c, int32_t r) noexcept
     return (bounce_side)result;
 }
 
-balls_map_internal::balls_map_internal()
+balls_map_internal::balls_map_internal() noexcept
     : m_ball_num(1), m_start_position({ balls_client_width / 2, balls_client_height - balls_radius }), m_end_position(m_start_position),
       m_difficulty(balls_difficulty_normal), m_random((unsigned int)time(nullptr)), m_index_dist(0, balls_max_columns - 1), m_prob_dist(0, 1)
 {
@@ -239,7 +246,7 @@ static constexpr void change_ball_arc(balls_ball& p, const xaml_point& sc, bool 
 }
 
 //获取一个球球心所在的格子周围的格子情况
-static constexpr bounce_side get_side(const xaml_point& pos, int ls, int ts, int rs, int bs) noexcept
+static bounce_side get_side(const xaml_point& pos, int ls, int ts, int rs, int bs) noexcept
 {
     int result = 0;
     //坐标整数化
@@ -264,7 +271,7 @@ static constexpr bounce_side get_side(const xaml_point& pos, int ls, int ts, int
     return (bounce_side)result;
 }
 
-constexpr double distance(const xaml_point& p) noexcept
+static double distance(const xaml_point& p) noexcept
 {
     return sqrt(p.x * p.x + p.y * p.y);
 }
@@ -474,7 +481,7 @@ xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
 
 xaml_result balls_map_internal::start(balls_map_enumerator** ptr) noexcept
 {
-    return xaml_object_init<balls_map_enumerator_impl>(ptr);
+    return xaml_object_init<balls_map_enumerator_impl>(ptr, this);
 }
 
 //balls_iterator balls::iterator(int x, int y)
@@ -600,6 +607,7 @@ xaml_result balls_map_internal::reset_all() noexcept
     m_end_position = m_start_position;
     memset(m_squares, 0, sizeof(m_squares));
     m_score = 0;
+    return XAML_S_OK;
 }
 
 xaml_point balls_map_internal::get_start(const xaml_point& p, double speed) const noexcept

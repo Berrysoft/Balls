@@ -1,3 +1,25 @@
+if(${XAML_NO_RTTI})
+    if(MSVC)
+        string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    else()
+        string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    endif()
+endif()
+
+if(MSVC)
+    string(REGEX REPLACE "/W3" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    string(REGEX REPLACE "/W3" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
+if(MSVC)
+    set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "")
+    set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "")
+endif()
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 file(GLOB BALLS_SOURCE "src/*.cpp")
 add_executable(balls ${BALLS_SOURCE})
 if(WIN32)

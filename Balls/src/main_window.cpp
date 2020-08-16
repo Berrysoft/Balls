@@ -7,6 +7,11 @@
 #include <xaml/ui/timer.h>
 #include <xaml/ui/window.h>
 
+namespace colors
+{
+#include <xaml/ui/colors.h>
+}
+
 using namespace std;
 
 struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_main_window, xaml_object>
@@ -45,6 +50,7 @@ xaml_result balls_main_window_impl::init() noexcept
     }
 
     XAML_RETURN_IF_FAILED(xaml_window_new(&m_window));
+    XAML_RETURN_IF_FAILED(m_window->set_size({ balls_client_width, balls_client_height }));
     {
         xaml_ptr<xaml_grid> grid;
         XAML_RETURN_IF_FAILED(xaml_grid_new(&grid));
@@ -86,9 +92,9 @@ xaml_result balls_main_window_impl::show() noexcept
 xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 {
     xaml_ptr<xaml_string> message, title, instruction;
-    XAML_RETURN_IF_FAILED(xaml_string_new(U("请选择难度"), &message));
     XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
-    XAML_RETURN_IF_FAILED(xaml_string_new(U("所有难度的区别仅为方块上数目大小的概率分布。"), &instruction));
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("请选择难度"), &instruction));
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("所有难度的区别仅为方块上数目大小的概率分布。"), &message));
     xaml_ptr<xaml_vector> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
 #define ADD_CUSTOM_BUTTON(result, text)                                               \
@@ -142,37 +148,43 @@ static constexpr xaml_color get_equare_color(int32_t t) noexcept
     t %= range * 5;
     if (t < range)
     {
-        return { 255, t * power, 0, 255 };
+        return { 255, (uint8_t)(t * power), 0, 255 };
     }
     else if (t < range * 2)
     {
-        return { 255, 255, 0, 255 - (t - range) * power };
+        return { 255, 255, 0, (uint8_t)(255 - (t - range) * power) };
     }
     else if (t < range * 3)
     {
-        return { 255, 255, (t - range * 2) * power, 0 };
+        return { 255, 255, (uint8_t)((t - range * 2) * power), 0 };
     }
     else if (t < range * 4)
     {
-        return { 255, 255 - (t - range * 3) * power, 255, (t - range * 3) * power };
+        return { 255, (uint8_t)(255 - (t - range * 3) * power), 255, (uint8_t)((t - range * 3) * power) };
     }
     else
     {
-        return { 255, 0, 255 - (t - range * 4) * power, 255 };
+        return { 255, 0, (uint8_t)(255 - (t - range * 4) * power), 255 };
     }
 }
 
 xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, xaml_ptr<xaml_drawing_context> dc) noexcept
 {
+    xaml_ptr<xaml_solid_brush> bback;
+    XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::black, &bback));
+    xaml_size size;
+    XAML_RETURN_IF_FAILED(cv->get_size(&size));
+    XAML_RETURN_IF_FAILED(dc->fill_rect(bback, { -1, -1, size.width + 2, size.height + 2 }));
     // TODO
     return XAML_S_OK;
 }
 
+static constexpr string_view simple_text = U("简单");
+static constexpr string_view normal_text = U("正常");
+static constexpr string_view hard_text = U("困难");
+
 static constexpr string_view get_difficulty_text(balls_difficulty difficulty) noexcept
 {
-    constexpr string_view simple_text = U("简单");
-    constexpr string_view normal_text = U("正常");
-    constexpr string_view hard_text = U("困难");
     switch (difficulty)
     {
     case balls_difficulty_simple:
