@@ -33,7 +33,7 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
 
     xaml_result XAML_CALL on_canvas_redraw(xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>) noexcept;
     xaml_result XAML_CALL on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args) noexcept;
-    xaml_result XAML_CALL on_canvas_size_changed(xaml_ptr<xaml_canvas>, xaml_size) noexcept;
+    xaml_result XAML_CALL on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept;
 };
 
 xaml_result balls_main_window_impl::init() noexcept
@@ -67,10 +67,10 @@ xaml_result balls_main_window_impl::init() noexcept
             }
             {
                 xaml_ptr<xaml_delegate> callback;
-                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_size>(
-                    xaml_mem_fn(&balls_main_window_impl::on_canvas_size_changed, this), &callback)));
+                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
+                    xaml_mem_fn(&balls_main_window_impl::on_window_size_changed, this), &callback)));
                 int32_t token;
-                XAML_RETURN_IF_FAILED(m_canvas->add_size_changed(callback, &token));
+                XAML_RETURN_IF_FAILED(m_window->add_size_changed(callback, &token));
             }
             XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
         }
@@ -111,7 +111,7 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 #undef ADD_CUSTOM_BUTTON
     xaml_msgbox_result result;
     XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, instruction, xaml_msgbox_info, buttons, &result));
-    switch (result)
+    switch ((int)result)
     {
     case 201:
         XAML_RETURN_IF_FAILED(m_map->set_difficulty(balls_difficulty_simple));
@@ -170,11 +170,30 @@ static constexpr xaml_color get_equare_color(int32_t t) noexcept
 
 xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, xaml_ptr<xaml_drawing_context> dc) noexcept
 {
-    xaml_ptr<xaml_solid_brush> bback;
-    XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::black, &bback));
-    xaml_size size;
-    XAML_RETURN_IF_FAILED(cv->get_size(&size));
-    XAML_RETURN_IF_FAILED(dc->fill_rect(bback, { -1, -1, size.width + 2, size.height + 2 }));
+    {
+        xaml_ptr<xaml_solid_brush> bback;
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::black, &bback));
+        xaml_size size;
+        XAML_RETURN_IF_FAILED(cv->get_size(&size));
+        XAML_RETURN_IF_FAILED(dc->fill_rect(bback, { -1, -1, size.width + 2, size.height + 2 }));
+    }
+    {
+        xaml_ptr<xaml_solid_brush> brback;
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::dark_gray, &brback));
+        XAML_RETURN_IF_FAILED(dc->fill_rect(brback, { dx, dy, dw, dh }));
+    }
+    double extend = dw / balls_client_width;
+    xaml_drawing_font font{ U("Segoe UI"), balls_num_size * extend, false, false, xaml_halignment_center, xaml_valignment_center };
+    if (!m_enumerator)
+    {
+        xaml_ptr<xaml_solid_brush> sample;
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::pale_violet_red, &sample));
+        xaml_point sample_pos;
+        XAML_RETURN_IF_FAILED(m_map->get_sample_position(&sample_pos));
+        sample_pos = (sample_pos * extend) + xaml_point{ dx, dy };
+        double r = balls_radius * extend;
+        XAML_RETURN_IF_FAILED(dc->fill_ellipse(sample, { sample_pos.x - r, sample_pos.y - r, 2 * r, 2 * r }));
+    }
     // TODO
     return XAML_S_OK;
 }
@@ -216,8 +235,10 @@ xaml_result balls_main_window_impl::on_map_ball_score_changed(xaml_ptr<balls_map
     return m_window->set_title(title_str);
 }
 
-xaml_result balls_main_window_impl::on_canvas_size_changed(xaml_ptr<xaml_canvas>, xaml_size size) noexcept
+xaml_result balls_main_window_impl::on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept
 {
+    xaml_size size;
+    XAML_RETURN_IF_FAILED(m_canvas->get_size(&size));
     double sidew = (size.width + 1) / balls_max_columns;
     double sideh = (size.height + 1) / balls_max_rows;
     double sidel = (min)(sidew, sideh);
