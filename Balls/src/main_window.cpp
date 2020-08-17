@@ -2,6 +2,7 @@
 #include <main_window.h>
 #include <serialstream.hpp>
 #include <sf/sformat.hpp>
+#include <xaml/ui/application.h>
 #include <xaml/ui/controls/canvas.h>
 #include <xaml/ui/filebox.h>
 #include <xaml/ui/msgbox.h>
@@ -32,6 +33,7 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
     xaml_result XAML_CALL show_stop(bool*) noexcept;
     xaml_result XAML_CALL show_close(bool*) noexcept;
     xaml_result XAML_CALL show_save(bool*) noexcept;
+    xaml_result XAML_CALL open_record(xaml_ptr<xaml_string> const&, bool*) noexcept;
 
     xaml_result XAML_CALL on_canvas_redraw(xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>) noexcept;
     xaml_result XAML_CALL on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args) noexcept;
@@ -111,8 +113,25 @@ xaml_result balls_main_window_impl::init() noexcept
 
 xaml_result balls_main_window_impl::show() noexcept
 {
+    xaml_ptr<xaml_application> app;
+    XAML_RETURN_IF_FAILED(xaml_application_current(&app));
+    xaml_ptr<xaml_vector_view> args;
+    XAML_RETURN_IF_FAILED(app->get_cmd_lines(&args));
+    int32_t size;
+    XAML_RETURN_IF_FAILED(args->get_size(&size));
     bool show;
-    XAML_RETURN_IF_FAILED(init_balls(&show));
+    if (size > 1)
+    {
+        xaml_ptr<xaml_object> item;
+        XAML_RETURN_IF_FAILED(args->get_at(1, &item));
+        xaml_ptr<xaml_string> filename;
+        XAML_RETURN_IF_FAILED(item->query(&filename));
+        XAML_RETURN_IF_FAILED(open_record(filename, &show));
+    }
+    else
+    {
+        XAML_RETURN_IF_FAILED(init_balls(&show));
+    }
     if (show)
     {
         XAML_RETURN_IF_FAILED(m_window->show());
@@ -197,28 +216,34 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
     {
         xaml_ptr<xaml_string> filename;
         XAML_RETURN_IF_FAILED(open->get_result(&filename));
-        string_view filename_view;
-        XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
-        serialstream stream(filename_view, ios::in);
-        int32_t version;
-        stream >> version;
-        if (version == record_version)
-        {
-            XAML_RETURN_IF_FAILED(balls_map_deserialize(stream, m_map));
-            XAML_RETURN_IF_FAILED(balls_map_enumerator_deserialize(stream, m_map, &m_enumerator));
-            *pvalue = true;
-            return XAML_S_OK;
-        }
-        else
-        {
-            xaml_ptr<xaml_string> message, title;
-            XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
-            XAML_RETURN_IF_FAILED(xaml_string_new(U("存档是由本游戏的不同版本创建的，无法打开"), &message));
-            xaml_msgbox_result result;
-            XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, nullptr, xaml_msgbox_error, xaml_msgbox_buttons_ok, &result));
-        }
+        return open_record(filename, pvalue);
     }
     *pvalue = false;
+    return XAML_S_OK;
+}
+
+xaml_result balls_main_window_impl::open_record(xaml_ptr<xaml_string> const& filename, bool* pvalue) noexcept
+{
+    string_view filename_view;
+    XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
+    serialstream stream(filename_view, ios::in);
+    int32_t version;
+    stream >> version;
+    if (version == record_version)
+    {
+        XAML_RETURN_IF_FAILED(balls_map_deserialize(stream, m_map));
+        XAML_RETURN_IF_FAILED(balls_map_enumerator_deserialize(stream, m_map, &m_enumerator));
+        *pvalue = true;
+    }
+    else
+    {
+        xaml_ptr<xaml_string> message, title;
+        XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
+        XAML_RETURN_IF_FAILED(xaml_string_new(U("存档是由本游戏的不同版本创建的，无法打开"), &message));
+        xaml_msgbox_result result;
+        XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, nullptr, xaml_msgbox_error, xaml_msgbox_buttons_ok, &result));
+        *pvalue = false;
+    }
     return XAML_S_OK;
 }
 
