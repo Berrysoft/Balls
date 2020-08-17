@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿#ifndef LOOPVAR_HPP
+#define LOOPVAR_HPP
+
 #include <limits>
 
 template <typename T>
@@ -10,7 +12,7 @@ private:
     T max;
 
 public:
-    loopvar(T value = T(0), T min = T(0), T max = std::numeric_limits<T>::max())
+    constexpr loopvar(T value = T(0), T min = T(0), T max = std::numeric_limits<T>::max()) noexcept
         : value(value), min(min), max(max) {}
 
     constexpr operator T() const { return value; }
@@ -55,3 +57,5 @@ public:
         return t;
     }
 };
+
+#endif // !LOOPVAR_HPP
