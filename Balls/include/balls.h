@@ -94,7 +94,7 @@ XAML_DECL_INTERFACE_(balls_map, xaml_object)
 EXTERN_C xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
 
 #ifdef __cplusplus
-xaml_result XAML_CALL balls_map_enumerator_serialize(serialstream&, balls_map_enumerator*) noexcept;
+xaml_result XAML_CALL balls_map_enumerator_serialize(serialstream&, balls_map*, balls_map_enumerator*) noexcept;
 xaml_result XAML_CALL balls_map_enumerator_deserialize(serialstream&, balls_map*, balls_map_enumerator**) noexcept;
 xaml_result XAML_CALL balls_map_serialize(serialstream&, balls_map*) noexcept;
 xaml_result XAML_CALL balls_map_deserialize(serialstream&, balls_map*) noexcept;

@@ -126,7 +126,12 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
     xaml_ptr<xaml_string> message, title, instruction;
     XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
     XAML_RETURN_IF_FAILED(xaml_string_new(U("请选择难度"), &instruction));
-    XAML_RETURN_IF_FAILED(xaml_string_new(U("所有难度的区别仅为方块上数目大小的概率分布。"), &message));
+    XAML_RETURN_IF_FAILED(xaml_string_new(
+        U("所有难度的区别仅为方块上数目大小的概率分布。\n"
+          "加号增加球的数目；问号随机更改球的速度方向；\n"
+          "减号使当前球消失；美元符号使本轮得分加倍。\n"
+          "按右键暂停。请不要过于依赖示例球。"),
+        &message));
     xaml_ptr<xaml_vector> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
 #define ADD_CUSTOM_BUTTON(result, text)                                               \
@@ -284,7 +289,7 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
         serialstream stream(filename_view, ios::out);
         stream << record_version;
         XAML_RETURN_IF_FAILED(balls_map_serialize(stream, m_map));
-        XAML_RETURN_IF_FAILED(balls_map_enumerator_serialize(stream, m_enumerator));
+        XAML_RETURN_IF_FAILED(balls_map_enumerator_serialize(stream, m_map, m_enumerator));
         *pvalue = true;
         return XAML_S_OK;
     }
