@@ -191,7 +191,7 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
     if (XAML_SUCCEEDED(open->show(m_window)))
     {
         xaml_ptr<xaml_string> filename;
-        XAML_RETURN_IF_FAILED(open->get_filename(&filename));
+        XAML_RETURN_IF_FAILED(open->get_result(&filename));
         string_view filename_view;
         XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
         serialstream stream(filename_view, ios::in);
@@ -199,8 +199,8 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
         stream >> version;
         if (version == record_version)
         {
-            XAML_RETURN_IF_FAILED(balls_map_deserialize(stream, &m_map));
-            XAML_RETURN_IF_FAILED(balls_map_enumerator_deserialize(stream, &m_enumerator));
+            XAML_RETURN_IF_FAILED(balls_map_deserialize(stream, m_map));
+            XAML_RETURN_IF_FAILED(balls_map_enumerator_deserialize(stream, m_map, &m_enumerator));
             *pvalue = true;
             return XAML_S_OK;
         }
@@ -278,7 +278,7 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
     if (XAML_SUCCEEDED(save->show(m_window)))
     {
         xaml_ptr<xaml_string> filename;
-        XAML_RETURN_IF_FAILED(save->get_filename(&filename));
+        XAML_RETURN_IF_FAILED(save->get_result(&filename));
         string_view filename_view;
         XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
         serialstream stream(filename_view, ios::out);
