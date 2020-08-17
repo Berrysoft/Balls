@@ -155,6 +155,14 @@ xaml_result balls_main_window_impl::show() noexcept
     return XAML_S_OK;
 }
 
+#define ADD_CUSTOM_BUTTON(buttons, result, text)                                      \
+    {                                                                                 \
+        xaml_msgbox_custom_button __bsimple = { (xaml_msgbox_result)(result), text }; \
+        xaml_ptr<xaml_object> __box;                                                  \
+        XAML_RETURN_IF_FAILED(xaml_box_value(__bsimple, &__box));                     \
+        XAML_RETURN_IF_FAILED(buttons->append(__box));                                \
+    }
+
 xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 {
     xaml_ptr<xaml_string> message, title, instruction;
@@ -168,18 +176,13 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
         &message));
     xaml_ptr<xaml_vector> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
-#define ADD_CUSTOM_BUTTON(result, text)                                               \
-    {                                                                                 \
-        xaml_msgbox_custom_button __bsimple = { (xaml_msgbox_result)(result), text }; \
-        xaml_ptr<xaml_object> __box;                                                  \
-        XAML_RETURN_IF_FAILED(xaml_box_value(__bsimple, &__box));                     \
-        XAML_RETURN_IF_FAILED(buttons->append(__box));                                \
-    }
-    ADD_CUSTOM_BUTTON(201, U("简单"));
-    ADD_CUSTOM_BUTTON(202, U("正常"));
-    ADD_CUSTOM_BUTTON(203, U("困难"));
-    ADD_CUSTOM_BUTTON(204, U("打开存档"));
-#undef ADD_CUSTOM_BUTTON
+    ADD_CUSTOM_BUTTON(buttons, 201, U("简单"));
+    ADD_CUSTOM_BUTTON(buttons, 202, U("正常"));
+    ADD_CUSTOM_BUTTON(buttons, 203, U("困难"));
+    ADD_CUSTOM_BUTTON(buttons, 204, U("打开存档"));
+#ifdef XAML_UI_COCOA
+    ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_cancel, U("关闭"));
+#endif // XAML_UI_COCOA
     xaml_msgbox_result result;
     XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, instruction, xaml_msgbox_info, buttons, &result));
     switch ((int)result)
@@ -255,8 +258,11 @@ xaml_result balls_main_window_impl::open_record(string_view filename, bool* pval
         xaml_ptr<xaml_string> message, title;
         XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
         XAML_RETURN_IF_FAILED(xaml_string_new(U("存档是由本游戏的不同版本创建的，无法打开"), &message));
+        xaml_ptr<xaml_vector> buttons;
+        XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
+        ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_ok, U("关闭"));
         xaml_msgbox_result result;
-        XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, nullptr, xaml_msgbox_error, xaml_msgbox_buttons_ok, &result));
+        XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, nullptr, xaml_msgbox_error, buttons, &result));
         *pvalue = false;
     }
     return XAML_S_OK;
@@ -266,7 +272,7 @@ xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
 {
     xaml_ptr<xaml_string> message, title, instruction;
     XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
-    XAML_RETURN_IF_FAILED(xaml_string_new(U("游戏结束，是否重新开始？"), &instruction));
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("游戏结束"), &instruction));
     balls_difficulty difficulty;
     XAML_RETURN_IF_FAILED(m_map->get_difficulty(&difficulty));
     int32_t ball_num;
@@ -274,8 +280,12 @@ xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
     uint64_t score;
     XAML_RETURN_IF_FAILED(m_map->get_score(&score));
     XAML_RETURN_IF_FAILED(xaml_string_new(sf::sprint(U("难度：{}\n球数：{}\n分数：{}"), difficulty, ball_num, score), &message));
+    xaml_ptr<xaml_vector> buttons;
+    XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
+    ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_yes, U("重新开始"));
+    ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_no, U("关闭"));
     xaml_msgbox_result result;
-    XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, instruction, xaml_msgbox_info, xaml_msgbox_buttons_yes_no, &result));
+    XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, instruction, xaml_msgbox_info, buttons, &result));
     *pvalue = result == xaml_msgbox_result_yes;
     return XAML_S_OK;
 }
@@ -285,8 +295,13 @@ xaml_result balls_main_window_impl::show_close(bool* pvalue) noexcept
     xaml_ptr<xaml_string> message, title;
     XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
     XAML_RETURN_IF_FAILED(xaml_string_new(U("游戏尚未结束，是否存档？"), &message));
+    xaml_ptr<xaml_vector> buttons;
+    XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
+    ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_yes, U("保存"));
+    ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_no, U("不保存"));
+    ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_cancel, U("取消"));
     xaml_msgbox_result result;
-    XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, nullptr, xaml_msgbox_info, xaml_msgbox_buttons_yes_no_cancel, &result));
+    XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, nullptr, xaml_msgbox_info, buttons, &result));
     switch (result)
     {
     case xaml_msgbox_result_yes:
