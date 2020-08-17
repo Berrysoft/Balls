@@ -199,7 +199,8 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
         stream >> version;
         if (version == record_version)
         {
-            // TODO
+            XAML_RETURN_IF_FAILED(balls_map_deserialize(stream, &m_map));
+            XAML_RETURN_IF_FAILED(balls_map_enumerator_deserialize(stream, &m_enumerator));
             *pvalue = true;
             return XAML_S_OK;
         }
@@ -282,7 +283,8 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
         XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
         serialstream stream(filename_view, ios::out);
         stream << record_version;
-        // TODO
+        XAML_RETURN_IF_FAILED(balls_map_serialize(stream, m_map));
+        XAML_RETURN_IF_FAILED(balls_map_enumerator_serialize(stream, m_enumerator));
         *pvalue = true;
         return XAML_S_OK;
     }

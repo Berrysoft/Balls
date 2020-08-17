@@ -1,9 +1,11 @@
 #ifndef BALLS_H
 #define BALLS_H
 
-#ifndef __cplusplus
+#ifdef __cplusplus
+    #include <serialstream.hpp>
+#else
     #include <stdbool.h>
-#endif // !__cplusplus
+#endif // __cplusplus
 
 #include <xaml/enumerable.h>
 #include <xaml/meta/meta_macros.h>
@@ -59,6 +61,11 @@ XAML_DECL_INTERFACE_(balls_map_enumerator, xaml_enumerator)
     XAML_DECL_VTBL(balls_map_enumerator, BALLS_MAP_ENUMERATOR);
 };
 
+#ifdef __cplusplus
+xaml_result XAML_CALL balls_map_enumerator_serialize(serialstream&, balls_map_enumerator*) noexcept;
+xaml_result XAML_CALL balls_map_enumerator_deserialize(serialstream&, balls_map_enumerator**) noexcept;
+#endif // __cplusplus
+
 typedef XAML_STD int32_t balls_map_t[balls_max_rows][balls_max_columns];
 
 XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0xf5, 0x22, 0xa7, 0x1e } })
@@ -90,6 +97,11 @@ XAML_DECL_INTERFACE_(balls_map, xaml_object)
 };
 
 EXTERN_C xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
+
+#ifdef __cplusplus
+xaml_result XAML_CALL balls_map_serialize(serialstream&, balls_map*) noexcept;
+xaml_result XAML_CALL balls_map_deserialize(serialstream&, balls_map**) noexcept;
+#endif // __cplusplus
 
 typedef struct balls_ball_score_changed_args balls_ball_score_changed_args;
 
