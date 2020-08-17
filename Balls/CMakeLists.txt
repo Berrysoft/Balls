@@ -34,4 +34,22 @@ elseif(APPLE)
     set_source_files_properties(res/logo.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 target_include_directories(balls PUBLIC include)
-target_link_libraries(balls xaml_ui_canvas xaml_ui_appmain nowide stream_format)
+target_link_libraries(balls PUBLIC xaml_ui_canvas xaml_ui_appmain nowide PRIVATE stream_format)
+
+if(APPLE)
+    install(CODE "
+        include(BundleUtilities)
+        fixup_bundle(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/balls.app \"\" \"${XAML_LIBRARY_OUTPUT_DIRECTORY}\")
+        execute_process(COMMAND
+            ${CMAKE_COMMAND} -E tar \"cfv\" \"${CMAKE_INSTALL_PREFIX}/balls.app.zip\" --format=zip
+                \"${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/balls.app\"
+            WORKING_DIRECTORY \"${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\"
+        )
+    ")
+else()
+    install(TARGETS balls xaml_global xaml_meta xaml_ui xaml_ui_canvas nowide
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+    )
+endif()
