@@ -2,7 +2,6 @@
 #include <main_window.h>
 #include <sf/sformat.hpp>
 #include <xaml/ui/controls/canvas.h>
-#include <xaml/ui/controls/grid.h>
 #include <xaml/ui/msgbox.h>
 #include <xaml/ui/timer.h>
 #include <xaml/ui/window.h>
@@ -76,39 +75,34 @@ xaml_result balls_main_window_impl::init() noexcept
         XAML_RETURN_IF_FAILED(m_window->add_closing(callback, &token));
     }
     {
-        xaml_ptr<xaml_grid> grid;
-        XAML_RETURN_IF_FAILED(xaml_grid_new(&grid));
+        XAML_RETURN_IF_FAILED(xaml_canvas_new(&m_canvas));
+        XAML_RETURN_IF_FAILED(m_canvas->set_halignment(xaml_halignment_stretch));
+        XAML_RETURN_IF_FAILED(m_canvas->set_valignment(xaml_valignment_stretch));
         {
-            XAML_RETURN_IF_FAILED(xaml_canvas_new(&m_canvas));
-            XAML_RETURN_IF_FAILED(m_canvas->set_halignment(xaml_halignment_stretch));
-            XAML_RETURN_IF_FAILED(m_canvas->set_valignment(xaml_valignment_stretch));
-            {
-                xaml_ptr<xaml_delegate> callback;
-                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>>(
-                    xaml_mem_fn(&balls_main_window_impl::on_canvas_redraw, this), &callback)));
-                int32_t token;
-                XAML_RETURN_IF_FAILED(m_canvas->add_redraw(callback, &token));
-            }
-            {
-                xaml_ptr<xaml_delegate> callback;
-                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_mouse_button>(
-                    xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_up, this), &callback)));
-                int32_t token;
-                XAML_RETURN_IF_FAILED(m_canvas->add_mouse_up(callback, &token));
-            }
-            {
-                xaml_ptr<xaml_delegate> callback;
-                XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_point>(
-                    xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_move, this), &callback)));
-                int32_t token;
-                XAML_RETURN_IF_FAILED(m_canvas->add_mouse_move(callback, &token));
-            }
-            XAML_RETURN_IF_FAILED(grid->add_child(m_canvas));
+            xaml_ptr<xaml_delegate> callback;
+            XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>>(
+                xaml_mem_fn(&balls_main_window_impl::on_canvas_redraw, this), &callback)));
+            int32_t token;
+            XAML_RETURN_IF_FAILED(m_canvas->add_redraw(callback, &token));
         }
-        XAML_RETURN_IF_FAILED(m_window->set_child(grid));
-    }
+        {
+            xaml_ptr<xaml_delegate> callback;
+            XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_mouse_button>(
+                xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_up, this), &callback)));
+            int32_t token;
+            XAML_RETURN_IF_FAILED(m_canvas->add_mouse_up(callback, &token));
+        }
+        {
+            xaml_ptr<xaml_delegate> callback;
+            XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_point>(
+                xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_move, this), &callback)));
+            int32_t token;
+            XAML_RETURN_IF_FAILED(m_canvas->add_mouse_move(callback, &token));
+            XAML_RETURN_IF_FAILED(m_window->set_child(m_canvas));
+        }
 
-    return XAML_S_OK;
+        return XAML_S_OK;
+    }
 }
 
 xaml_result balls_main_window_impl::show() noexcept
