@@ -7,11 +7,6 @@
 #include <xaml/ui/timer.h>
 #include <xaml/ui/window.h>
 
-namespace colors
-{
-#include <xaml/ui/colors.h>
-}
-
 using namespace std;
 
 struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_main_window, xaml_object>
@@ -265,20 +260,30 @@ static constexpr xaml_rectangle get_ball_rect(xaml_point const& delta, xaml_poin
     return { real_p.x - r, real_p.y - r, 2 * r, 2 * r };
 }
 
+static constexpr xaml_color black_none{ 255, 0, 0, 0 };
+static constexpr xaml_color black_back{ 255, 31, 31, 31 };
+static constexpr xaml_color white_fore{ 255, 255, 255, 255 };
+static constexpr xaml_color red_ball{ 255, 197, 15, 31 };
+static constexpr xaml_color red_sample{ 255, 231, 72, 86 };
+static constexpr xaml_color green_border{ 255, 22, 198, 12 };
+static constexpr xaml_color blue_circle{ 255, 0, 55, 218 };
+static constexpr xaml_color yellow_circle{ 255, 193, 156, 0 };
+static constexpr xaml_color purple_circle{ 255, 136, 23, 152 };
+
 static constexpr xaml_color get_circle_fill(int32_t t) noexcept
 {
     switch (t)
     {
     case balls_special_new_ball:
-        return colors::blue;
+        return blue_circle;
     case balls_special_delete_ball:
-        return colors::red;
+        return red_ball;
     case balls_special_random_turn:
-        return colors::purple;
+        return purple_circle;
     case balls_special_random_turn_old:
-        return colors::red;
+        return red_sample;
     case balls_special_double_score:
-        return colors::yellow;
+        return yellow_circle;
     default:
         return {};
     }
@@ -289,14 +294,14 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     //画背景
     {
         xaml_ptr<xaml_solid_brush> bback;
-        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::black, &bback));
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(black_none, &bback));
         xaml_size size;
         XAML_RETURN_IF_FAILED(cv->get_size(&size));
         XAML_RETURN_IF_FAILED(dc->fill_rect(bback, { -1, -1, size.width + 2, size.height + 2 }));
     }
     {
         xaml_ptr<xaml_solid_brush> brback;
-        XAML_RETURN_IF_FAILED(xaml_solid_brush_new({ 255, 31, 31, 31 }, &brback));
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(black_back, &brback));
         XAML_RETURN_IF_FAILED(dc->fill_rect(brback, { dx, dy, dw, dh }));
     }
     double extend = dw / balls_client_width;
@@ -305,7 +310,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     if (!m_enumerator)
     {
         xaml_ptr<xaml_solid_brush> sample;
-        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::pale_violet_red, &sample));
+        XAML_RETURN_IF_FAILED(xaml_solid_brush_new(red_sample, &sample));
         xaml_point sample_pos;
         XAML_RETURN_IF_FAILED(m_map->get_sample_position(&sample_pos));
         XAML_RETURN_IF_FAILED(dc->fill_ellipse(sample, get_ball_rect({ dx, dy }, sample_pos, extend)));
@@ -314,7 +319,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     xaml_ptr<xaml_solid_brush> bball;
     bool double_score;
     XAML_RETURN_IF_FAILED(m_map->get_is_double_score(&double_score));
-    XAML_RETURN_IF_FAILED(xaml_solid_brush_new(double_score ? colors::yellow : colors::red, &bball));
+    XAML_RETURN_IF_FAILED(xaml_solid_brush_new(double_score ? yellow_circle : red_ball, &bball));
     xaml_point start_pos;
     XAML_RETURN_IF_FAILED(m_map->get_start_position(&start_pos));
     //球没有发射完才画起始球
@@ -353,7 +358,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     }
     //下面的都是绿边框
     xaml_ptr<xaml_brush_pen> pborder;
-    XAML_RETURN_IF_FAILED(xaml_brush_pen_new_solid(colors::green, 3, &pborder));
+    XAML_RETURN_IF_FAILED(xaml_brush_pen_new_solid(green_border, 3, &pborder));
     balls_map_t const* pmap;
     XAML_RETURN_IF_FAILED(m_map->get_map(&pmap));
     for (int32_t x = 0; x < balls_max_columns; x++)
@@ -370,7 +375,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
                 //方块的填充色会变化
                 xaml_color fillc = get_square_color(t);
                 xaml_ptr<xaml_solid_brush> btext;
-                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(fillc.g > 127 ? colors::black : colors::white, &btext));
+                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(fillc.g > 127 ? black_back : white_fore, &btext));
                 xaml_ptr<xaml_solid_brush> bfill;
                 XAML_RETURN_IF_FAILED(xaml_solid_brush_new(fillc, &bfill));
                 xaml_rectangle round_rect = xaml_rectangle{ (double)(x * balls_side_length + 5), (double)(y * balls_side_length + 5), (double)(balls_side_length - 11), (double)(balls_side_length - 11) } * extend;
@@ -395,7 +400,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
                     XAML_RETURN_IF_FAILED(dc->draw_ellipse(pborder, circle_rect));
                 }
                 xaml_ptr<xaml_solid_brush> bfore;
-                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(colors::white, &bfore));
+                XAML_RETURN_IF_FAILED(xaml_solid_brush_new(white_fore, &bfore));
                 xaml_ptr<xaml_brush_pen> pfore;
                 XAML_RETURN_IF_FAILED(xaml_brush_pen_new(bfore, 3, &pfore));
                 switch (t)
@@ -424,7 +429,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
                 case balls_special_double_score:
                 {
                     xaml_ptr<xaml_string> text;
-                    XAML_RETURN_IF_FAILED(xaml_string_new(U("￥"), &text));
+                    XAML_RETURN_IF_FAILED(xaml_string_new(U("$"), &text));
                     XAML_RETURN_IF_FAILED(dc->draw_string(bfore, font, center, text));
                     break;
                 }
