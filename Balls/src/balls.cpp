@@ -1,5 +1,4 @@
 ﻿#include <balls.h>
-#include <ctime>
 #include <loopvar.hpp>
 #include <random>
 #include <sf/sformat.hpp>
@@ -296,6 +295,20 @@ try
 }
 XAML_CATCH_RETURN()
 
+static random_device rnd_dev{};
+
+balls_map_internal::balls_map_internal() noexcept
+    : m_ball_num(1), m_start_position({ balls_client_width / 2, balls_client_height - balls_radius }), m_end_position(m_start_position),
+      m_difficulty(balls_difficulty_normal), m_random(rnd_dev()), m_index_dist(0, balls_max_columns - 1), m_prob_dist(0, 1)
+{
+}
+
+xaml_result balls_map_internal::init() noexcept
+{
+    XAML_RETURN_IF_FAILED(xaml_event_new(&m_ball_score_changed));
+    return XAML_S_OK;
+}
+
 bounce_side balls_map_internal::get_bounce_side(int32_t c, int32_t r) noexcept
 {
     int result = 0;
@@ -335,18 +348,6 @@ bounce_side balls_map_internal::get_bounce_side(int32_t c, int32_t r) noexcept
         result |= right_bottom;
     }
     return (bounce_side)result;
-}
-
-balls_map_internal::balls_map_internal() noexcept
-    : m_ball_num(1), m_start_position({ balls_client_width / 2, balls_client_height - balls_radius }), m_end_position(m_start_position),
-      m_difficulty(balls_difficulty_normal), m_random((unsigned int)time(nullptr)), m_index_dist(0, balls_max_columns - 1), m_prob_dist(0, 1)
-{
-}
-
-xaml_result balls_map_internal::init() noexcept
-{
-    XAML_RETURN_IF_FAILED(xaml_event_new(&m_ball_score_changed));
-    return XAML_S_OK;
 }
 
 static constexpr void change_ball(double& speed, double& pos, int side, bool minus) noexcept
