@@ -31,6 +31,7 @@ elseif(APPLE)
         MACOSX_BUNDLE_ICON_FILE logo
     )
     target_sources(balls PUBLIC res/logo.icns)
+    set_source_files_properties(res/logo.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 target_include_directories(balls PUBLIC include)
 target_link_libraries(balls xaml_ui_canvas xaml_ui_appmain nowide stream_format)

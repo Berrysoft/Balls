@@ -1,5 +1,7 @@
 #include <balls.h>
+#include <filesystem>
 #include <main_window.h>
+#include <nowide/filesystem.hpp>
 #include <serialstream.hpp>
 #include <sf/sformat.hpp>
 #include <xaml/ui/application.h>
@@ -33,7 +35,7 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
     xaml_result XAML_CALL show_stop(bool*) noexcept;
     xaml_result XAML_CALL show_close(bool*) noexcept;
     xaml_result XAML_CALL show_save(bool*) noexcept;
-    xaml_result XAML_CALL open_record(xaml_ptr<xaml_string> const&, bool*) noexcept;
+    xaml_result XAML_CALL open_record(string_view, bool*) noexcept;
 
     xaml_result XAML_CALL on_canvas_redraw(xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>) noexcept;
     xaml_result XAML_CALL on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args) noexcept;
@@ -119,14 +121,27 @@ xaml_result balls_main_window_impl::show() noexcept
     XAML_RETURN_IF_FAILED(app->get_cmd_lines(&args));
     int32_t size;
     XAML_RETURN_IF_FAILED(args->get_size(&size));
-    bool show;
+    string_view view{};
     if (size > 1)
     {
-        xaml_ptr<xaml_object> item;
-        XAML_RETURN_IF_FAILED(args->get_at(1, &item));
-        xaml_ptr<xaml_string> filename;
-        XAML_RETURN_IF_FAILED(item->query(&filename));
-        XAML_RETURN_IF_FAILED(open_record(filename, &show));
+        for (int32_t i = 0; i < size; i++)
+        {
+            xaml_ptr<xaml_object> item;
+            XAML_RETURN_IF_FAILED(args->get_at(i, &item));
+            xaml_ptr<xaml_string> filename;
+            XAML_RETURN_IF_FAILED(item->query(&filename));
+            XAML_RETURN_IF_FAILED(to_string_view(filename, &view));
+            if (!filesystem::exists(nowide::filesystem::path{ view }))
+            {
+                view = {};
+                continue;
+            }
+        }
+    }
+    bool show;
+    if (!view.empty())
+    {
+        XAML_RETURN_IF_FAILED(open_record(view, &show));
     }
     else
     {
@@ -216,17 +231,17 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
     {
         xaml_ptr<xaml_string> filename;
         XAML_RETURN_IF_FAILED(open->get_result(&filename));
-        return open_record(filename, pvalue);
+        string_view view;
+        XAML_RETURN_IF_FAILED(to_string_view(filename, &view));
+        return open_record(view, pvalue);
     }
     *pvalue = false;
     return XAML_S_OK;
 }
 
-xaml_result balls_main_window_impl::open_record(xaml_ptr<xaml_string> const& filename, bool* pvalue) noexcept
+xaml_result balls_main_window_impl::open_record(string_view filename, bool* pvalue) noexcept
 {
-    string_view filename_view;
-    XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
-    serialstream stream(filename_view, ios::in);
+    serialstream stream(filename, ios::in);
     int32_t version;
     stream >> version;
     if (version == record_version)
