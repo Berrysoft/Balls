@@ -60,7 +60,7 @@ xaml_result balls_main_window_impl::init() noexcept
     }
 
     XAML_RETURN_IF_FAILED(xaml_window_new(&m_window));
-    XAML_RETURN_IF_FAILED(m_window->set_size({ balls_client_width, balls_client_height }));
+    XAML_RETURN_IF_FAILED(m_window->set_location({ 100, 100 }));
     {
         xaml_ptr<xaml_delegate> callback;
         XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
@@ -118,6 +118,7 @@ xaml_result balls_main_window_impl::show() noexcept
     if (show)
     {
         XAML_RETURN_IF_FAILED(m_window->show());
+        XAML_RETURN_IF_FAILED(m_window->set_size({ 450, 600 }));
     }
     return XAML_S_OK;
 }
@@ -548,8 +549,9 @@ static constexpr xaml_point get_com_point(xaml_point const& delta, xaml_point co
 
 xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_up(xaml_ptr<xaml_canvas>, xaml_mouse_button button) noexcept
 {
-    if (button == xaml_mouse_button_left)
+    switch (button)
     {
+    case xaml_mouse_button_left:
         if (!m_enumerator)
         {
             double extend = balls_client_width / dw;
@@ -557,6 +559,22 @@ xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_up(xaml_ptr<xaml_c
             XAML_RETURN_IF_FAILED(m_map->start_by(cp, &m_enumerator));
             XAML_RETURN_IF_FAILED(m_timer->start());
         }
+        break;
+    case xaml_mouse_button_right:
+        if (m_enumerator)
+        {
+            bool enabled;
+            XAML_RETURN_IF_FAILED(m_timer->get_is_enabled(&enabled));
+            if (enabled)
+            {
+                XAML_RETURN_IF_FAILED(m_timer->stop());
+            }
+            else
+            {
+                XAML_RETURN_IF_FAILED(m_timer->start());
+            }
+        }
+        break;
     }
     return XAML_S_OK;
 }
