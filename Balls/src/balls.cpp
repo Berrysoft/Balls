@@ -42,7 +42,7 @@ struct balls_map_internal
 
     XAML_PROP_IMPL_BASE(ball_num, int32_t, int32_t*)
     XAML_PROP_IMPL_BASE(remain_ball_num, int32_t, int32_t*)
-    XAML_PROP_IMPL_BASE(score, int32_t, int32_t*)
+    XAML_PROP_IMPL_BASE(score, uint64_t, uint64_t*)
 
     xaml_result XAML_CALL set_ball_num(int32_t value) noexcept
     {
@@ -120,7 +120,7 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
 
     XAML_PROP_INTERNAL_IMPL(ball_num, int32_t*, int32_t)
     XAML_PROP_INTERNAL_IMPL(remain_ball_num, int32_t*, int32_t)
-    XAML_PROP_INTERNAL_IMPL(score, int32_t*, int32_t)
+    XAML_PROP_INTERNAL_IMPL(score, uint64_t*, uint64_t)
     XAML_PROP_INTERNAL_IMPL(difficulty, balls_difficulty*, balls_difficulty)
 
     XAML_EVENT_INTERNAL_IMPL(ball_score_changed)

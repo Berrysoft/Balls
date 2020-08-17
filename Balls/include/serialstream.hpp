@@ -9,7 +9,7 @@ private:
     nowide::fstream base_stream;
 
 public:
-    serialstream(const std::string& name = {}, std::ios_base::openmode mode = std::ios::in | std::ios::out) : base_stream(name, mode | std::ios::binary) {}
+    serialstream(const nowide::filesystem::path& name = {}, std::ios_base::openmode mode = std::ios::in | std::ios::out) : base_stream(name, mode | std::ios::binary) {}
     serialstream(const serialstream&) = delete;
     serialstream(serialstream&& stream) : base_stream(std::move(stream.base_stream)) {}
 
@@ -21,6 +21,17 @@ public:
     }
 
     ~serialstream() { base_stream.close(); }
+
+    serialstream& write(const void* data, std::size_t size)
+    {
+        base_stream.write((const char*)data, size);
+        return *this;
+    }
+    serialstream& real(void* data, std::size_t size)
+    {
+        base_stream.read((char*)data, size);
+        return *this;
+    }
 
     template <typename T, typename>
     friend serialstream& operator<<(serialstream& stream, T&& obj);

@@ -1,12 +1,16 @@
 #include <balls.h>
 #include <main_window.h>
+#include <serialstream.hpp>
 #include <sf/sformat.hpp>
 #include <xaml/ui/controls/canvas.h>
+#include <xaml/ui/filebox.h>
 #include <xaml/ui/msgbox.h>
 #include <xaml/ui/timer.h>
 #include <xaml/ui/window.h>
 
 using namespace std;
+
+static constexpr int32_t record_version = 2;
 
 struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_main_window, xaml_object>
 {
@@ -165,7 +169,49 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 
 xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
 {
-    // TODO
+    xaml_ptr<xaml_open_filebox> open;
+    XAML_RETURN_IF_FAILED(xaml_open_filebox_new(&open));
+    {
+        xaml_ptr<xaml_vector> filters;
+        XAML_RETURN_IF_FAILED(xaml_vector_new(&filters));
+        {
+            xaml_filebox_filter f{ U("存档文件"), U("*.balls") };
+            xaml_ptr<xaml_object> box;
+            XAML_RETURN_IF_FAILED(xaml_box_value(f, &box));
+            XAML_RETURN_IF_FAILED(filters->append(box));
+        }
+        {
+            xaml_filebox_filter f{ U("所有文件"), U("*.*") };
+            xaml_ptr<xaml_object> box;
+            XAML_RETURN_IF_FAILED(xaml_box_value(f, &box));
+            XAML_RETURN_IF_FAILED(filters->append(box));
+        }
+        XAML_RETURN_IF_FAILED(open->set_filters(filters));
+    }
+    if (XAML_SUCCEEDED(open->show(m_window)))
+    {
+        xaml_ptr<xaml_string> filename;
+        XAML_RETURN_IF_FAILED(open->get_filename(&filename));
+        string_view filename_view;
+        XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
+        serialstream stream(filename_view, ios::in);
+        int32_t version;
+        stream >> version;
+        if (version == record_version)
+        {
+            // TODO
+            *pvalue = true;
+            return XAML_S_OK;
+        }
+        else
+        {
+            xaml_ptr<xaml_string> message, title;
+            XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
+            XAML_RETURN_IF_FAILED(xaml_string_new(U("存档是由本游戏的不同版本创建的，无法打开"), &message));
+            xaml_msgbox_result result;
+            XAML_RETURN_IF_FAILED(xaml_msgbox(m_window, message, title, nullptr, xaml_msgbox_error, xaml_msgbox_buttons_ok, &result));
+        }
+    }
     *pvalue = false;
     return XAML_S_OK;
 }
@@ -179,7 +225,7 @@ xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
     XAML_RETURN_IF_FAILED(m_map->get_difficulty(&difficulty));
     int32_t ball_num;
     XAML_RETURN_IF_FAILED(m_map->get_ball_num(&ball_num));
-    int32_t score;
+    uint64_t score;
     XAML_RETURN_IF_FAILED(m_map->get_score(&score));
     XAML_RETURN_IF_FAILED(xaml_string_new(sf::sprint(U("难度：{}\n球数：{}\n分数：{}"), difficulty, ball_num, score), &message));
     xaml_msgbox_result result;
@@ -215,8 +261,32 @@ xaml_result balls_main_window_impl::show_close(bool* pvalue) noexcept
 
 xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
 {
-    // TODO
-    *pvalue = true;
+    xaml_ptr<xaml_save_filebox> save;
+    XAML_RETURN_IF_FAILED(xaml_save_filebox_new(&save));
+    {
+        xaml_ptr<xaml_vector> filters;
+        XAML_RETURN_IF_FAILED(xaml_vector_new(&filters));
+        {
+            xaml_filebox_filter f{ U("存档文件"), U("*.balls") };
+            xaml_ptr<xaml_object> box;
+            XAML_RETURN_IF_FAILED(xaml_box_value(f, &box));
+            XAML_RETURN_IF_FAILED(filters->append(box));
+        }
+        XAML_RETURN_IF_FAILED(save->set_filters(filters));
+    }
+    if (XAML_SUCCEEDED(save->show(m_window)))
+    {
+        xaml_ptr<xaml_string> filename;
+        XAML_RETURN_IF_FAILED(save->get_filename(&filename));
+        string_view filename_view;
+        XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
+        serialstream stream(filename_view, ios::out);
+        stream << record_version;
+        // TODO
+        *pvalue = true;
+        return XAML_S_OK;
+    }
+    *pvalue = false;
     return XAML_S_OK;
 }
 

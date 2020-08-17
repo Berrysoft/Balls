@@ -67,7 +67,7 @@ XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0x
     XAML_VTBL_INHERIT(XAML_OBJECT_VTBL(type));                                      \
     XAML_PROP(ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);                 \
     XAML_PROP(remain_ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);          \
-    XAML_PROP(score, type, XAML_STD int32_t*, XAML_STD int32_t);                    \
+    XAML_PROP(score, type, XAML_STD uint64_t*, XAML_STD uint64_t);                  \
     XAML_PROP(difficulty, type, balls_difficulty*, balls_difficulty);               \
     XAML_EVENT(ball_score_changed, type);                                           \
     XAML_PROP(start_position, type, xaml_point*, xaml_point XAML_CONST_REF);        \
@@ -97,7 +97,7 @@ struct balls_ball_score_changed_args
 {
     XAML_STD int32_t ball_num;
     XAML_STD int32_t remain_ball_num;
-    XAML_STD int32_t score;
+    XAML_STD uint64_t score;
 };
 
 XAML_TYPE(balls_ball_score_changed_args, { 0xa813cb25, 0x86fe, 0x4437, { 0xa6, 0x48, 0xe9, 0xe5, 0x59, 0x79, 0x8d, 0x1f } })
