@@ -33,24 +33,19 @@ public:
         return *this;
     }
 
-    template <typename T, typename>
-    friend serialstream& operator<<(serialstream& stream, T&& obj);
-    template <typename T, typename>
-    friend serialstream& operator>>(serialstream& stream, T&& obj);
+    template <typename T, typename = std::enable_if_t<std::is_trivial<std::remove_reference_t<T>>::value>>
+    inline serialstream& operator<<(T&& obj)
+    {
+        base_stream.write((const char*)&obj, sizeof(std::remove_reference_t<T>));
+        return *this;
+    }
+
+    template <typename T, typename = std::enable_if_t<std::is_trivial<std::remove_reference_t<T>>::value>>
+    inline serialstream& operator>>(T&& obj)
+    {
+        base_stream.read((char*)&obj, sizeof(std::remove_reference_t<T>));
+        return *this;
+    }
 };
-
-template <typename T, typename = std::enable_if_t<std::is_trivial<std::remove_reference_t<T>>::value>>
-inline serialstream& operator<<(serialstream& stream, T&& obj)
-{
-    stream.base_stream.write((const char*)&obj, sizeof(std::remove_reference_t<T>));
-    return stream;
-}
-
-template <typename T, typename = std::enable_if_t<std::is_trivial<std::remove_reference_t<T>>::value>>
-inline serialstream& operator>>(serialstream& stream, T&& obj)
-{
-    stream.base_stream.read((char*)&obj, sizeof(std::remove_reference_t<T>));
-    return stream;
-}
 
 #endif // !SERIALSTREAM_HPP

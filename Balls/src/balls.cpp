@@ -232,10 +232,10 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
     }
 };
 
-xaml_result XAML_CALL balls_map_enumerator_serialize(serialstream& stream, balls_map_enumerator* e) noexcept
+xaml_result XAML_CALL balls_map_enumerator_serialize(serialstream& stream, balls_map_enumerator* enumerator) noexcept
 try
 {
-    balls_map_enumerator_impl const* impl = (balls_map_enumerator_impl*)e;
+    balls_map_enumerator_impl const* impl = (balls_map_enumerator_impl*)enumerator;
     stream << impl->m_ball_num;
     stream << impl->m_stopped_num;
     stream << (int32_t)impl->m_loop;
@@ -253,12 +253,12 @@ try
 }
 XAML_CATCH_RETURN()
 
-xaml_result XAML_CALL balls_map_enumerator_deserialize(serialstream& stream, balls_map* map, balls_map_enumerator** e) noexcept
+xaml_result XAML_CALL balls_map_enumerator_deserialize(serialstream& stream, balls_map* map, balls_map_enumerator** enumerator) noexcept
 try
 {
     balls_map_internal* internal = &(((balls_map_impl*)map)->m_internal);
-    XAML_RETURN_IF_FAILED(xaml_object_init<balls_map_enumerator_impl>(e, internal));
-    balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)(*e);
+    XAML_RETURN_IF_FAILED(xaml_object_init<balls_map_enumerator_impl>(enumerator, internal));
+    balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)(*enumerator);
     stream >> impl->m_ball_num;
     stream >> impl->m_stopped_num;
     int32_t loop;
@@ -268,8 +268,8 @@ try
     stream >> size;
     if (!size)
     {
-        (*e)->release();
-        *e = nullptr;
+        impl->release();
+        *enumerator = nullptr;
         return XAML_S_OK;
     }
     while (size--)
