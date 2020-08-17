@@ -24,6 +24,13 @@ file(GLOB BALLS_SOURCE "src/*.cpp")
 add_executable(balls ${BALLS_SOURCE})
 if(WIN32)
 	set_target_properties(balls PROPERTIES WIN32_EXECUTABLE ON)
+    target_sources(balls PUBLIC res/logo.rc)
+elseif(APPLE)
+    set_target_properties(balls PROPERTIES
+        MACOSX_BUNDLE ON
+        MACOSX_BUNDLE_ICON_FILE logo
+    )
+    target_sources(balls PUBLIC res/logo.icns)
 endif()
 target_include_directories(balls PUBLIC include)
 target_link_libraries(balls xaml_ui_canvas xaml_ui_appmain nowide stream_format)
