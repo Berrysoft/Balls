@@ -47,7 +47,7 @@ if(APPLE)
         )
     ")
 else()
-    install(TARGETS balls xaml_global xaml_meta xaml_ui xaml_ui_canvas nowide
+    install(TARGETS balls xaml_global xaml_meta xaml_markup xaml_ui xaml_ui_canvas nowide
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
