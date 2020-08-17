@@ -1,6 +1,7 @@
 #ifndef SERIALSTREAM_HPP
 #define SERIALSTREAM_HPP
 
+#include <nowide/filesystem.hpp>
 #include <nowide/fstream.hpp>
 
 class serialstream
