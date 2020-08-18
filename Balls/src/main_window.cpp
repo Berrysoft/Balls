@@ -244,7 +244,7 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
 
 xaml_result balls_main_window_impl::open_record(string_view filename, bool* pvalue) noexcept
 {
-    nowide::ifstream stream(filename, ios_base::binary);
+    nowide::ifstream stream(filename.data(), ios_base::binary);
     int32_t version;
     stream.read((char*)&version, sizeof(int32_t));
     if (version == record_version)
@@ -344,7 +344,7 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
         XAML_RETURN_IF_FAILED(save->get_result(&filename));
         string_view filename_view;
         XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
-        nowide::ofstream stream(filename_view, ios::binary);
+        nowide::ofstream stream(filename_view.data(), ios::binary);
         stream.write((const char*)&record_version, sizeof(int32_t));
         xaml_ptr<xaml_buffer> buffer;
         XAML_RETURN_IF_FAILED(balls_map_serialize(m_map, m_enumerator, &buffer));
