@@ -6,6 +6,10 @@
 #include <xaml/meta/meta_macros.h>
 #include <xaml/ui/drawing.h>
 
+#ifndef BALLS_LIB_API
+    #define BALLS_LIB_API __XAML_IMPORT
+#endif // !BALLS_LIB_API
+
 typedef struct balls_ball balls_ball;
 
 struct balls_ball
@@ -102,7 +106,7 @@ XAML_DECL_INTERFACE_(balls_map, xaml_object)
     XAML_DECL_VTBL(balls_map, BALLS_MAP_VTBL);
 };
 
-EXTERN_C xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
+EXTERN_C BALLS_LIB_API xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
 
 typedef struct balls_ball_score_changed_args balls_ball_score_changed_args;
 

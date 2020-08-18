@@ -1,6 +1,6 @@
-#include <balls.h>
+#include <balls/balls.h>
+#include <balls/main_window.h>
 #include <filesystem>
-#include <main_window.h>
 #include <nowide/filesystem.hpp>
 #include <nowide/fstream.hpp>
 #include <sf/sformat.hpp>
