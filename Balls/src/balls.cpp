@@ -1,5 +1,4 @@
 ﻿#include <balls.h>
-#include <loopvar.hpp>
 #include <random>
 #include <sf/sformat.hpp>
 #include <xaml/event.h>
@@ -156,10 +155,10 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
 
     int32_t m_ball_num;
     int32_t m_stopped_num;
-    loopvar<int32_t> m_loop;
+    int32_t m_loop;
     xaml_ptr<xaml_vector> m_current_balls;
 
-    balls_map_enumerator_impl() noexcept : m_stopped_num(0), m_loop(3, 0, 3) {}
+    balls_map_enumerator_impl() noexcept : m_stopped_num(0), m_loop(3) {}
 
     xaml_result XAML_CALL move_next(bool* pvalue) noexcept override;
     xaml_result XAML_CALL get_current(xaml_object** ptr) noexcept override { return m_current_balls.query(ptr); }
@@ -230,7 +229,7 @@ try
         balls_map_enumerator_impl const* impl = (balls_map_enumerator_impl*)enumerator;
         write_buffer(buffer, impl->m_ball_num);
         write_buffer(buffer, impl->m_stopped_num);
-        write_buffer(buffer, (int32_t)impl->m_loop);
+        write_buffer(buffer, impl->m_loop);
         int32_t size;
         XAML_RETURN_IF_FAILED(impl->m_current_balls->get_size(&size));
         write_buffer(buffer, (uint64_t)size);
@@ -281,9 +280,7 @@ try
     balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)(*penumerator);
     read_buffer(data, impl->m_ball_num);
     read_buffer(data, impl->m_stopped_num);
-    int32_t loop;
-    read_buffer(data, loop);
-    impl->m_loop = loop;
+    read_buffer(data, impl->m_loop);
     uint64_t size;
     read_buffer(data, size);
     if (!size)
@@ -559,7 +556,7 @@ xaml_result balls_map_enumerator_impl::increase_base_score() noexcept
 
 xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
 {
-    ++m_loop;
+    m_loop = (m_loop + 1) % 4;
     bool is_ends;
     XAML_RETURN_IF_FAILED(get_is_end_shooting(&is_ends));
     if (!is_ends && !m_loop)
