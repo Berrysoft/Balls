@@ -13,5 +13,9 @@ set(BUILD_CMDLINE OFF)
 set(BUILD_PARSER OFF)
 set(BUILD_DETECTOR OFF)
 set(BUILD_RESOURCE_COMPILER OFF)
+
+include(XamlCpp/cmake/Modules/XamlCompilerHelper.cmake)
+xaml_check_ipo()
+
 add_subdirectory(XamlCpp)
 add_subdirectory(Balls)
