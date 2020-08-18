@@ -88,6 +88,7 @@ jobs:
 
   - script: |
       cd build
+      mkdir -p $(Build.ArtifactStagingDirectory)/$(rid)
       ninja install
     displayName: 'Install all projects'
     condition: ne(variables.plat, 'win')

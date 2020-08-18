@@ -3,6 +3,8 @@
 
 使用 C++ 20 标准，在 Windows 10, Linux, macOS X 下编译通过。使用了我开发的另一个 GUI 封装库 [XamlCpp](https://github.com/Berrysoft/XamlCpp)。
 
+[![Azure DevOps builds](https://strawberry-vs.visualstudio.com/Balls/_apis/build/status/Berrysoft.Balls?branch=master)](https://strawberry-vs.visualstudio.com/Balls/_build)
+
 ## 游戏特点
 球的碰撞是弹性碰撞，如果碰到直角会以45°反弹。
 
