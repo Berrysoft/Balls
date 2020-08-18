@@ -234,6 +234,7 @@ xaml_result XAML_CALL balls_map_internal::serialize(balls_map_enumerator* enumer
 try
 {
     vector<uint8_t> buffer;
+    write_buffer(buffer, balls_record_version);
     write_buffer(buffer, m_ball_num);
     write_buffer(buffer, m_start_position);
     write_buffer(buffer, m_end_position);
@@ -287,6 +288,9 @@ try
 {
     uint8_t* data;
     XAML_RETURN_IF_FAILED(buffer->get_data(&data));
+    int32_t version;
+    read_buffer(data, version);
+    if (version != balls_record_version) return XAML_E_NOTIMPL;
     read_buffer(data, m_ball_num);
     read_buffer(data, m_start_position);
     read_buffer(data, m_end_position);

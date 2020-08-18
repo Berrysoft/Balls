@@ -25,6 +25,8 @@ XAML_CONSTEXPR_VAR XAML_STD int32_t balls_client_height = balls_side_length * ba
 XAML_CONSTEXPR_VAR double balls_abs_speed = 50.0;
 XAML_CONSTEXPR_VAR XAML_STD int32_t balls_num_size = 100;
 
+XAML_CONSTEXPR_VAR XAML_STD int32_t balls_record_version = 2;
+
 typedef enum balls_difficulty
 {
     balls_difficulty_simple,

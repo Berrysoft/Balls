@@ -13,8 +13,6 @@
 
 using namespace std;
 
-static constexpr int32_t record_version = 2;
-
 struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_main_window, xaml_object>
 {
     xaml_ptr<xaml_window> m_window{};
@@ -245,18 +243,16 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
 xaml_result balls_main_window_impl::open_record(string_view filename, bool* pvalue) noexcept
 {
     nowide::ifstream stream(filename.data(), ios_base::binary);
-    int32_t version;
-    stream.read((char*)&version, sizeof(int32_t));
-    if (version == record_version)
+    vector<uint8_t> buffer;
+    copy(istreambuf_iterator<char>{ stream }, istreambuf_iterator<char>{}, insert_iterator{ buffer, buffer.begin() });
+    xaml_ptr<xaml_buffer> buffer_ref;
+    XAML_RETURN_IF_FAILED(xaml_buffer_new_reference(buffer, &buffer_ref));
+    xaml_result __hr = m_map->deserialize(buffer_ref, &m_enumerator);
+    XAML_LIKELY if (XAML_SUCCEEDED(__hr))
     {
-        vector<uint8_t> buffer;
-        copy(istreambuf_iterator<char>{ stream }, istreambuf_iterator<char>{}, insert_iterator{ buffer, buffer.begin() });
-        xaml_ptr<xaml_buffer> buffer_ref;
-        XAML_RETURN_IF_FAILED(xaml_buffer_new_reference(buffer, &buffer_ref));
-        XAML_RETURN_IF_FAILED(m_map->deserialize(buffer_ref, &m_enumerator));
         *pvalue = true;
     }
-    else
+    else if (__hr == XAML_E_NOTIMPL)
     {
         xaml_ptr<xaml_string> message, title;
         XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
@@ -267,6 +263,10 @@ xaml_result balls_main_window_impl::open_record(string_view filename, bool* pval
         xaml_msgbox_result result;
         XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, nullptr, xaml_msgbox_error, buttons, &result));
         *pvalue = false;
+    }
+    else
+    {
+        return __hr;
     }
     return XAML_S_OK;
 }
@@ -345,7 +345,6 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
         string_view filename_view;
         XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
         nowide::ofstream stream(filename_view.data(), ios::binary);
-        stream.write((const char*)&record_version, sizeof(int32_t));
         xaml_ptr<xaml_buffer> buffer;
         XAML_RETURN_IF_FAILED(m_map->serialize(m_enumerator, &buffer));
         uint8_t* data;
