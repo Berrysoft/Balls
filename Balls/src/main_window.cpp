@@ -389,7 +389,7 @@ static constexpr xaml_rectangle get_ball_rect(xaml_point const& delta, xaml_poin
 
 static constexpr xaml_color black_none{ 255, 0, 0, 0 };
 static constexpr xaml_color black_back{ 255, 31, 31, 31 };
-static constexpr xaml_color white_fore{ 255, 255, 255, 255 };
+static constexpr xaml_color white_fore{ 255, 223, 223, 223 };
 static constexpr xaml_color red_ball{ 255, 197, 15, 31 };
 static constexpr xaml_color red_sample{ 255, 231, 72, 86 };
 static constexpr xaml_color green_border{ 255, 22, 198, 12 };
