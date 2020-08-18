@@ -31,7 +31,7 @@ jobs:
     vmImage: $(imageName)
 
   variables:
-    configCmdline: -DBUILD_SHARED_LIBS=on -DXAML_INSTALL=off -DBUILD_WEBVIEW=off -DBUILD_RESOURCE_COMPILER=off -DBUILD_DETECTOR=off -DBUILD_CONTROLS=off -DBUILD_CMDLINE=off -DBUILD_PARSER=off
+    configCmdline: -DBUILD_SHARED_LIBS=on
     macLLVMPath: /usr/local/opt/llvm/bin
 
   steps:
