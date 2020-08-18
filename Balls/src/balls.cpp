@@ -150,53 +150,6 @@ xaml_result XAML_CALL balls_map_new(balls_map** ptr) noexcept
     return xaml_object_init<balls_map_impl>(ptr);
 }
 
-xaml_result XAML_CALL balls_map_serialize(serialstream& stream, balls_map* map) noexcept
-try
-{
-    balls_map_internal const* internal = &(((balls_map_impl*)map)->m_internal);
-    stream << internal->m_ball_num;
-    stream << internal->m_start_position;
-    stream << internal->m_end_position;
-    stream << internal->m_start_velocity;
-    stream << (int32_t)internal->m_is_double_score;
-    stream << internal->m_score;
-    stream << internal->m_difficulty;
-    for (auto& sr : internal->m_squares)
-    {
-        for (auto& s : sr)
-        {
-            stream << s;
-        }
-    }
-    return XAML_S_OK;
-}
-XAML_CATCH_RETURN()
-
-xaml_result XAML_CALL balls_map_deserialize(serialstream& stream, balls_map* map) noexcept
-try
-{
-    balls_map_internal* internal = &(((balls_map_impl*)map)->m_internal);
-    stream >> internal->m_ball_num;
-    stream >> internal->m_start_position;
-    stream >> internal->m_end_position;
-    stream >> internal->m_start_velocity;
-    int32_t double_score;
-    stream >> double_score;
-    internal->m_is_double_score = double_score;
-    stream >> internal->m_score;
-    stream >> internal->m_difficulty;
-    for (auto& sr : internal->m_squares)
-    {
-        for (auto& s : sr)
-        {
-            stream >> s;
-        }
-    }
-    XAML_RETURN_IF_FAILED(map->set_remain_ball_num(internal->m_ball_num));
-    return XAML_S_OK;
-}
-XAML_CATCH_RETURN()
-
 struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, balls_map_enumerator, xaml_enumerator, xaml_object>
 {
     balls_map_internal* m_base;
@@ -231,62 +184,118 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
     }
 };
 
-xaml_result XAML_CALL balls_map_enumerator_serialize(serialstream& stream, balls_map* map, balls_map_enumerator* enumerator) noexcept
+template <typename T, typename = std::enable_if_t<std::is_trivial_v<std::remove_reference_t<T>>>>
+static void write_buffer(vector<uint8_t>& buffer, T&& value)
+{
+    using real_t = std::remove_reference_t<T>;
+    uint8_t const* ptr = (uint8_t const*)&value;
+    for (size_t i = 0; i < sizeof(real_t); i++)
+    {
+        buffer.push_back(ptr[i]);
+    }
+}
+
+template <typename T, typename = std::enable_if_t<std::is_trivial_v<std::remove_reference_t<T>>>>
+static void read_buffer(uint8_t*& it, T& value)
+{
+    using real_t = std::remove_reference_t<T>;
+    uint8_t* ptr = (uint8_t*)&value;
+    for (size_t i = 0; i < sizeof(real_t); i++)
+    {
+        ptr[i] = *it++;
+    }
+}
+
+xaml_result XAML_CALL balls_map_serialize(balls_map* map, balls_map_enumerator* enumerator, xaml_buffer** ptr) noexcept
 try
 {
+    vector<uint8_t> buffer;
+    balls_map_internal const* internal = &(((balls_map_impl*)map)->m_internal);
+    write_buffer(buffer, internal->m_ball_num);
+    write_buffer(buffer, internal->m_start_position);
+    write_buffer(buffer, internal->m_end_position);
+    write_buffer(buffer, internal->m_start_velocity);
+    write_buffer(buffer, (int32_t)internal->m_is_double_score);
+    write_buffer(buffer, internal->m_score);
+    write_buffer(buffer, internal->m_difficulty);
+    for (auto& sr : internal->m_squares)
+    {
+        for (auto& s : sr)
+        {
+            write_buffer(buffer, s);
+        }
+    }
     if (enumerator)
     {
         balls_map_enumerator_impl const* impl = (balls_map_enumerator_impl*)enumerator;
-        stream << impl->m_ball_num;
-        stream << impl->m_stopped_num;
-        stream << (int32_t)impl->m_loop;
+        write_buffer(buffer, impl->m_ball_num);
+        write_buffer(buffer, impl->m_stopped_num);
+        write_buffer(buffer, (int32_t)impl->m_loop);
         int32_t size;
         XAML_RETURN_IF_FAILED(impl->m_current_balls->get_size(&size));
-        stream << (uint64_t)size;
+        write_buffer(buffer, (uint64_t)size);
         XAML_FOREACH_START(box, impl->m_current_balls);
         {
             balls_ball b;
             XAML_RETURN_IF_FAILED(xaml_unbox_value(box, &b));
-            stream << b;
+            write_buffer(buffer, b);
         }
         XAML_FOREACH_END();
     }
     // for compatibility
     else
     {
-        balls_map_internal* internal = &(((balls_map_impl*)map)->m_internal);
-        stream << internal->m_ball_num;
-        stream << internal->m_ball_num;
-        stream << int32_t(0);
-        stream << uint64_t(0);
+        write_buffer(buffer, internal->m_ball_num);
+        write_buffer(buffer, internal->m_ball_num);
+        write_buffer(buffer, int32_t(0));
+        write_buffer(buffer, uint64_t(0));
     }
-    return XAML_S_OK;
+    return xaml_buffer_new(move(buffer), ptr);
 }
 XAML_CATCH_RETURN()
 
-xaml_result XAML_CALL balls_map_enumerator_deserialize(serialstream& stream, balls_map* map, balls_map_enumerator** enumerator) noexcept
+xaml_result XAML_CALL balls_map_deserialize(xaml_buffer* buffer, balls_map* map, balls_map_enumerator** penumerator) noexcept
 try
 {
+    uint8_t* data;
+    XAML_RETURN_IF_FAILED(buffer->get_data(&data));
     balls_map_internal* internal = &(((balls_map_impl*)map)->m_internal);
-    XAML_RETURN_IF_FAILED(xaml_object_init<balls_map_enumerator_impl>(enumerator, internal));
-    balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)(*enumerator);
-    stream >> impl->m_ball_num;
-    stream >> impl->m_stopped_num;
+    read_buffer(data, internal->m_ball_num);
+    read_buffer(data, internal->m_start_position);
+    read_buffer(data, internal->m_end_position);
+    read_buffer(data, internal->m_start_velocity);
+    int32_t double_score;
+    read_buffer(data, double_score);
+    internal->m_is_double_score = double_score;
+    read_buffer(data, internal->m_score);
+    read_buffer(data, internal->m_difficulty);
+    for (auto& sr : internal->m_squares)
+    {
+        for (auto& s : sr)
+        {
+            read_buffer(data, s);
+        }
+    }
+    XAML_RETURN_IF_FAILED(map->set_remain_ball_num(internal->m_ball_num));
+    XAML_RETURN_IF_FAILED(xaml_object_init<balls_map_enumerator_impl>(penumerator, internal));
+    balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)(*penumerator);
+    read_buffer(data, impl->m_ball_num);
+    read_buffer(data, impl->m_stopped_num);
     int32_t loop;
-    stream >> loop;
+    read_buffer(data, loop);
     impl->m_loop = loop;
     uint64_t size;
-    stream >> size;
+    read_buffer(data, size);
     if (!size)
     {
         impl->release();
-        *enumerator = nullptr;
+        *penumerator = nullptr;
         return XAML_S_OK;
     }
     while (size--)
     {
         balls_ball b;
-        stream >> b;
+        read_buffer(data, b);
         xaml_ptr<xaml_object> box;
         XAML_RETURN_IF_FAILED(xaml_box_value(b, &box));
         XAML_RETURN_IF_FAILED(impl->m_current_balls->append(box));

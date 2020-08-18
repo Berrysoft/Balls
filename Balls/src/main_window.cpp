@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <main_window.h>
 #include <nowide/filesystem.hpp>
-#include <serialstream.hpp>
+#include <nowide/fstream.hpp>
 #include <sf/sformat.hpp>
 #include <xaml/ui/application.h>
 #include <xaml/ui/controls/canvas.h>
@@ -244,13 +244,16 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
 
 xaml_result balls_main_window_impl::open_record(string_view filename, bool* pvalue) noexcept
 {
-    serialstream stream(filename, ios::in);
+    nowide::ifstream stream(filename, ios_base::binary);
     int32_t version;
-    stream >> version;
+    stream.read((char*)&version, sizeof(int32_t));
     if (version == record_version)
     {
-        XAML_RETURN_IF_FAILED(balls_map_deserialize(stream, m_map));
-        XAML_RETURN_IF_FAILED(balls_map_enumerator_deserialize(stream, m_map, &m_enumerator));
+        vector<uint8_t> buffer;
+        copy(istreambuf_iterator<char>{ stream }, istreambuf_iterator<char>{}, insert_iterator{ buffer, buffer.begin() });
+        xaml_ptr<xaml_buffer> buffer_ref;
+        XAML_RETURN_IF_FAILED(xaml_buffer_new_reference(buffer, &buffer_ref));
+        XAML_RETURN_IF_FAILED(balls_map_deserialize(buffer_ref, m_map, &m_enumerator));
         *pvalue = true;
     }
     else
@@ -341,10 +344,15 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
         XAML_RETURN_IF_FAILED(save->get_result(&filename));
         string_view filename_view;
         XAML_RETURN_IF_FAILED(to_string_view(filename, &filename_view));
-        serialstream stream(filename_view, ios::out);
-        stream << record_version;
-        XAML_RETURN_IF_FAILED(balls_map_serialize(stream, m_map));
-        XAML_RETURN_IF_FAILED(balls_map_enumerator_serialize(stream, m_map, m_enumerator));
+        nowide::ofstream stream(filename_view, ios::binary);
+        stream.write((const char*)&record_version, sizeof(int32_t));
+        xaml_ptr<xaml_buffer> buffer;
+        XAML_RETURN_IF_FAILED(balls_map_serialize(m_map, m_enumerator, &buffer));
+        uint8_t* data;
+        XAML_RETURN_IF_FAILED(buffer->get_data(&data));
+        int32_t size;
+        XAML_RETURN_IF_FAILED(buffer->get_size(&size));
+        stream.write((const char*)data, size);
         *pvalue = true;
         return XAML_S_OK;
     }
