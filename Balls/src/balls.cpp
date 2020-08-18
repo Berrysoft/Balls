@@ -89,6 +89,9 @@ struct balls_map_internal
     xaml_result XAML_CALL reset(bool*) noexcept;
     xaml_result XAML_CALL reset_all() noexcept;
 
+    xaml_result XAML_CALL serialize(balls_map_enumerator*, xaml_buffer**) noexcept;
+    xaml_result XAML_CALL deserialize(xaml_buffer*, balls_map_enumerator**) noexcept;
+
     xaml_point get_start(xaml_point const& p, double speed) const noexcept;
 
     xaml_result set_sample(xaml_point const& p) noexcept;
@@ -139,6 +142,9 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
     xaml_result XAML_CALL reset(bool* pvalue) noexcept override { return m_internal.reset(pvalue); }
     xaml_result XAML_CALL reset_all() noexcept override { return m_internal.reset_all(); }
 
+    xaml_result XAML_CALL serialize(balls_map_enumerator* e, xaml_buffer** ptr) noexcept override { return m_internal.serialize(e, ptr); }
+    xaml_result XAML_CALL deserialize(xaml_buffer* buffer, balls_map_enumerator** ptr) noexcept override { return m_internal.deserialize(buffer, ptr); }
+
     xaml_result XAML_CALL set_sample(xaml_point const& p) noexcept override { return m_internal.set_sample(p); }
 
     xaml_result XAML_CALL init() noexcept { return m_internal.init(); }
@@ -174,6 +180,20 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
         return XAML_S_OK;
     }
 
+    xaml_result XAML_CALL get_internal(balls_map_enumerator_internal* ptr) noexcept override
+    {
+        *ptr = { m_ball_num, m_stopped_num, m_loop };
+        return XAML_S_OK;
+    }
+
+    xaml_result XAML_CALL set_internal(balls_map_enumerator_internal const& internal) noexcept override
+    {
+        m_ball_num = internal.ball_num;
+        m_stopped_num = internal.stopped_num;
+        m_loop = internal.loop;
+        return XAML_S_OK;
+    }
+
     xaml_result XAML_CALL init(balls_map_internal* base) noexcept
     {
         m_base = base;
@@ -182,6 +202,11 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
         return XAML_S_OK;
     }
 };
+
+static xaml_result balls_map_enumerator_new(balls_map_internal* internal, balls_map_enumerator** ptr) noexcept
+{
+    return xaml_object_init<balls_map_enumerator_impl>(ptr, internal);
+}
 
 template <typename T, typename = std::enable_if_t<std::is_trivial_v<std::remove_reference_t<T>>>>
 static void write_buffer(vector<uint8_t>& buffer, T&& value)
@@ -205,19 +230,18 @@ static void read_buffer(uint8_t*& it, T& value)
     }
 }
 
-xaml_result XAML_CALL balls_map_serialize(balls_map* map, balls_map_enumerator* enumerator, xaml_buffer** ptr) noexcept
+xaml_result XAML_CALL balls_map_internal::serialize(balls_map_enumerator* enumerator, xaml_buffer** ptr) noexcept
 try
 {
     vector<uint8_t> buffer;
-    balls_map_internal const* internal = &(((balls_map_impl*)map)->m_internal);
-    write_buffer(buffer, internal->m_ball_num);
-    write_buffer(buffer, internal->m_start_position);
-    write_buffer(buffer, internal->m_end_position);
-    write_buffer(buffer, internal->m_start_velocity);
-    write_buffer(buffer, (int32_t)internal->m_is_double_score);
-    write_buffer(buffer, internal->m_score);
-    write_buffer(buffer, internal->m_difficulty);
-    for (auto& sr : internal->m_squares)
+    write_buffer(buffer, m_ball_num);
+    write_buffer(buffer, m_start_position);
+    write_buffer(buffer, m_end_position);
+    write_buffer(buffer, m_start_velocity);
+    write_buffer(buffer, (int32_t)m_is_double_score);
+    write_buffer(buffer, m_score);
+    write_buffer(buffer, m_difficulty);
+    for (auto& sr : m_squares)
     {
         for (auto& s : sr)
         {
@@ -226,14 +250,19 @@ try
     }
     if (enumerator)
     {
-        balls_map_enumerator_impl const* impl = (balls_map_enumerator_impl*)enumerator;
-        write_buffer(buffer, impl->m_ball_num);
-        write_buffer(buffer, impl->m_stopped_num);
-        write_buffer(buffer, impl->m_loop);
+        balls_map_enumerator_internal internal;
+        XAML_RETURN_IF_FAILED(enumerator->get_internal(&internal));
+        write_buffer(buffer, internal);
+        xaml_ptr<xaml_vector_view> current_balls;
+        {
+            xaml_ptr<xaml_object> obj;
+            XAML_RETURN_IF_FAILED(enumerator->get_current(&obj));
+            XAML_RETURN_IF_FAILED(obj->query(&current_balls));
+        }
         int32_t size;
-        XAML_RETURN_IF_FAILED(impl->m_current_balls->get_size(&size));
+        XAML_RETURN_IF_FAILED(current_balls->get_size(&size));
         write_buffer(buffer, (uint64_t)size);
-        XAML_FOREACH_START(box, impl->m_current_balls);
+        XAML_FOREACH_START(box, current_balls);
         {
             balls_ball b;
             XAML_RETURN_IF_FAILED(xaml_unbox_value(box, &b));
@@ -244,8 +273,8 @@ try
     // for compatibility
     else
     {
-        write_buffer(buffer, internal->m_ball_num);
-        write_buffer(buffer, internal->m_ball_num);
+        write_buffer(buffer, m_ball_num);
+        write_buffer(buffer, m_ball_num);
         write_buffer(buffer, int32_t(0));
         write_buffer(buffer, uint64_t(0));
     }
@@ -253,50 +282,52 @@ try
 }
 XAML_CATCH_RETURN()
 
-xaml_result XAML_CALL balls_map_deserialize(xaml_buffer* buffer, balls_map* map, balls_map_enumerator** penumerator) noexcept
+xaml_result XAML_CALL balls_map_internal::deserialize(xaml_buffer* buffer, balls_map_enumerator** penumerator) noexcept
 try
 {
     uint8_t* data;
     XAML_RETURN_IF_FAILED(buffer->get_data(&data));
-    balls_map_internal* internal = &(((balls_map_impl*)map)->m_internal);
-    read_buffer(data, internal->m_ball_num);
-    read_buffer(data, internal->m_start_position);
-    read_buffer(data, internal->m_end_position);
-    read_buffer(data, internal->m_start_velocity);
+    read_buffer(data, m_ball_num);
+    read_buffer(data, m_start_position);
+    read_buffer(data, m_end_position);
+    read_buffer(data, m_start_velocity);
     int32_t double_score;
     read_buffer(data, double_score);
-    internal->m_is_double_score = double_score;
-    read_buffer(data, internal->m_score);
-    read_buffer(data, internal->m_difficulty);
-    for (auto& sr : internal->m_squares)
+    m_is_double_score = double_score;
+    read_buffer(data, m_score);
+    read_buffer(data, m_difficulty);
+    for (auto& sr : m_squares)
     {
         for (auto& s : sr)
         {
             read_buffer(data, s);
         }
     }
-    XAML_RETURN_IF_FAILED(map->set_remain_ball_num(internal->m_ball_num));
-    XAML_RETURN_IF_FAILED(xaml_object_init<balls_map_enumerator_impl>(penumerator, internal));
-    balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)(*penumerator);
-    read_buffer(data, impl->m_ball_num);
-    read_buffer(data, impl->m_stopped_num);
-    read_buffer(data, impl->m_loop);
+    xaml_ptr<balls_map_enumerator> enumerator;
+    XAML_RETURN_IF_FAILED(balls_map_enumerator_new(this, &enumerator));
+    balls_map_enumerator_internal internal;
+    read_buffer(data, internal);
+    XAML_RETURN_IF_FAILED(enumerator->set_internal(internal));
     uint64_t size;
     read_buffer(data, size);
     if (!size)
     {
-        impl->release();
-        *penumerator = nullptr;
-        return XAML_S_OK;
+        enumerator = nullptr;
     }
-    while (size--)
+    else
     {
-        balls_ball b;
-        read_buffer(data, b);
-        xaml_ptr<xaml_object> box;
-        XAML_RETURN_IF_FAILED(xaml_box_value(b, &box));
-        XAML_RETURN_IF_FAILED(impl->m_current_balls->append(box));
+        balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)enumerator.get();
+        while (size--)
+        {
+            balls_ball b;
+            read_buffer(data, b);
+            xaml_ptr<xaml_object> box;
+            XAML_RETURN_IF_FAILED(xaml_box_value(b, &box));
+            XAML_RETURN_IF_FAILED(impl->m_current_balls->append(box));
+        }
     }
+    XAML_RETURN_IF_FAILED(enumerator.query(penumerator));
+    XAML_RETURN_IF_FAILED(set_remain_ball_num(internal.ball_num - internal.stopped_num));
     return XAML_S_OK;
 }
 XAML_CATCH_RETURN()
@@ -615,7 +646,7 @@ xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
 
 xaml_result balls_map_internal::start(balls_map_enumerator** ptr) noexcept
 {
-    return xaml_object_init<balls_map_enumerator_impl>(ptr, this);
+    return balls_map_enumerator_new(this, ptr);
 }
 
 xaml_result balls_map_internal::start_by(xaml_point const& p, balls_map_enumerator** ptr) noexcept

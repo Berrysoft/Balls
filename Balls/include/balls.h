@@ -45,11 +45,23 @@ typedef enum balls_special_num
 
 XAML_TYPE(balls_special_num, { 0x7b2a1bd7, 0x2114, 0x4616, { 0x9d, 0x97, 0xf2, 0x2a, 0xf2, 0x02, 0x7c, 0x88 } })
 
+typedef struct balls_map_enumerator_internal balls_map_enumerator_internal;
+
+struct balls_map_enumerator_internal
+{
+    XAML_STD int32_t ball_num;
+    XAML_STD int32_t stopped_num;
+    XAML_STD int32_t loop;
+};
+
+XAML_TYPE(balls_map_enumerator_internal, { 0x4a0f5f82, 0x898f, 0x46b7, { 0xbc, 0xe6, 0xbe, 0x10, 0x49, 0x6d, 0x25, 0xb0 } })
+
 XAML_CLASS(balls_map_enumerator, { 0x4d8f6447, 0x6046, 0x4831, { 0xb4, 0x97, 0xc4, 0xe7, 0x47, 0xad, 0x3d, 0x1e } })
 
 #define BALLS_MAP_ENUMERATOR(type)                 \
     XAML_VTBL_INHERIT(XAML_ENUMERATOR_VTBL(type)); \
-    XAML_METHOD(get_is_end_shooting, type, bool*)
+    XAML_METHOD(get_is_end_shooting, type, bool*); \
+    XAML_PROP(internal, type, balls_map_enumerator_internal*, balls_map_enumerator_internal XAML_CONST_REF)
 
 XAML_DECL_INTERFACE_(balls_map_enumerator, xaml_enumerator)
 {
@@ -79,7 +91,9 @@ XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0x
     XAML_METHOD(start, type, balls_map_enumerator**);                               \
     XAML_METHOD(start_by, type, xaml_point XAML_CONST_REF, balls_map_enumerator**); \
     XAML_METHOD(reset, type, bool*);                                                \
-    XAML_METHOD(reset_all, type)
+    XAML_METHOD(reset_all, type);                                                   \
+    XAML_METHOD(serialize, type, balls_map_enumerator*, xaml_buffer**);             \
+    XAML_METHOD(deserialize, type, xaml_buffer*, balls_map_enumerator**)
 
 XAML_DECL_INTERFACE_(balls_map, xaml_object)
 {
@@ -87,9 +101,6 @@ XAML_DECL_INTERFACE_(balls_map, xaml_object)
 };
 
 EXTERN_C xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
-
-EXTERN_C xaml_result XAML_CALL balls_map_serialize(balls_map*, balls_map_enumerator*, xaml_buffer**) XAML_NOEXCEPT;
-EXTERN_C xaml_result XAML_CALL balls_map_deserialize(xaml_buffer*, balls_map*, balls_map_enumerator**) XAML_NOEXCEPT;
 
 typedef struct balls_ball_score_changed_args balls_ball_score_changed_args;
 

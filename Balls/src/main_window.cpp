@@ -253,7 +253,7 @@ xaml_result balls_main_window_impl::open_record(string_view filename, bool* pval
         copy(istreambuf_iterator<char>{ stream }, istreambuf_iterator<char>{}, insert_iterator{ buffer, buffer.begin() });
         xaml_ptr<xaml_buffer> buffer_ref;
         XAML_RETURN_IF_FAILED(xaml_buffer_new_reference(buffer, &buffer_ref));
-        XAML_RETURN_IF_FAILED(balls_map_deserialize(buffer_ref, m_map, &m_enumerator));
+        XAML_RETURN_IF_FAILED(m_map->deserialize(buffer_ref, &m_enumerator));
         *pvalue = true;
     }
     else
@@ -347,7 +347,7 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
         nowide::ofstream stream(filename_view.data(), ios::binary);
         stream.write((const char*)&record_version, sizeof(int32_t));
         xaml_ptr<xaml_buffer> buffer;
-        XAML_RETURN_IF_FAILED(balls_map_serialize(m_map, m_enumerator, &buffer));
+        XAML_RETURN_IF_FAILED(m_map->serialize(m_enumerator, &buffer));
         uint8_t* data;
         XAML_RETURN_IF_FAILED(buffer->get_data(&data));
         int32_t size;
@@ -477,7 +477,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     //画所有运动中的球
     if (m_enumerator)
     {
-        xaml_ptr<xaml_vector> balls;
+        xaml_ptr<xaml_vector_view> balls;
         {
             xaml_ptr<xaml_object> obj;
             XAML_RETURN_IF_FAILED(m_enumerator->get_current(&obj));
