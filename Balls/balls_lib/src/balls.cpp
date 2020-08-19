@@ -273,9 +273,7 @@ try
     // for compatibility
     else
     {
-        write_buffer(buffer, m_ball_num);
-        write_buffer(buffer, m_ball_num);
-        write_buffer(buffer, int32_t(0));
+        write_buffer(buffer, balls_map_enumerator_internal{ m_ball_num, m_ball_num, 0 });
         write_buffer(buffer, uint64_t(0));
     }
     return xaml_buffer_new(move(buffer), ptr);
@@ -320,7 +318,8 @@ try
     else
     {
         balls_map_enumerator_impl* impl = (balls_map_enumerator_impl*)enumerator.get();
-        while (size--)
+        uint64_t n = size;
+        while (n--)
         {
             balls_ball b;
             read_buffer(data, b);
@@ -330,7 +329,8 @@ try
         }
     }
     XAML_RETURN_IF_FAILED(enumerator.query(penumerator));
-    XAML_RETURN_IF_FAILED(set_remain_ball_num(internal.ball_num - internal.stopped_num));
+    int32_t remain = internal.ball_num - internal.stopped_num - (int32_t)size;
+    XAML_RETURN_IF_FAILED(set_remain_ball_num(remain <= 0 ? internal.ball_num : remain));
     return XAML_S_OK;
 }
 XAML_CATCH_RETURN()
