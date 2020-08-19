@@ -9,19 +9,19 @@ set(BALLS_DESCRIPTION "二维弹球")
 
 find_package(Git)
 if(Git_FOUND)
-	execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-		RESULT_VARIABLE GIT_RESULT
-		OUTPUT_VARIABLE GIT_HASH
-	)
-	if(GIT_RESULT EQUAL 0)
-		string(REPLACE "\n" "" GIT_HASH ${GIT_HASH})
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+        RESULT_VARIABLE GIT_RESULT
+        OUTPUT_VARIABLE GIT_HASH
+    )
+    if(GIT_RESULT EQUAL 0)
+        string(REPLACE "\n" "" GIT_HASH ${GIT_HASH})
         string(SUBSTRING ${GIT_HASH} 0 6 GIT_HASH)
         string(CONCAT BALLS_LONG_VERSION ${BALLS_VERSION} "-" ${GIT_HASH})
-	endif()
+    endif()
 endif()
 
 if(WIN32)
-	set_target_properties(balls PROPERTIES WIN32_EXECUTABLE ON)
+    set_target_properties(balls PROPERTIES WIN32_EXECUTABLE ON)
     get_filename_component(BALLS_ICON "res/logo.ico" ABSOLUTE)
     set(BALLS_WIN32_VERSION "${PROJECT_VERSION_MAJOR}, ${PROJECT_VERSION_MINOR}, ${PROJECT_VERSION_PATCH}")
     configure_file(res/info.rc.in ${PROJECT_BINARY_DIR}/info.rc @ONLY)
@@ -33,7 +33,7 @@ elseif(APPLE)
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${BALLS_VERSION}
         MACOSX_BUNDLE_LONG_VERSION_STRING ${BALLS_LONG_VERSION}
         MACOSX_BUNDLE_COPYRIGHT ${BALLS_COPYRIGHT}
-        MACOSX_BUNDLE_INFO_STRING ${BALLS_DESCRIPTON}
+        MACOSX_BUNDLE_INFO_STRING ${BALLS_DESCRIPTION}
     )
     target_sources(balls PUBLIC res/logo.icns)
     set_source_files_properties(res/logo.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
