@@ -1,4 +1,5 @@
 ﻿#include <balls/balls.h>
+#include <iterator>
 #include <random>
 #include <xaml/event.h>
 
@@ -208,14 +209,11 @@ static xaml_result balls_map_enumerator_new(balls_map_internal* internal, balls_
 }
 
 template <typename T, typename = std::enable_if_t<std::is_trivial_v<std::remove_reference_t<T>>>>
-static void write_buffer(vector<uint8_t>& buffer, T&& value)
+static void write_buffer(insert_iterator<vector<uint8_t>>& it, T&& value)
 {
     using real_t = std::remove_reference_t<T>;
     uint8_t const* ptr = (uint8_t const*)&value;
-    for (size_t i = 0; i < sizeof(real_t); i++)
-    {
-        buffer.push_back(ptr[i]);
-    }
+    it = copy(ptr, ptr + sizeof(real_t), it);
 }
 
 template <typename T, typename = std::enable_if_t<std::is_trivial_v<std::remove_reference_t<T>>>>
@@ -223,36 +221,35 @@ static void read_buffer(uint8_t*& it, T& value)
 {
     using real_t = std::remove_reference_t<T>;
     uint8_t* ptr = (uint8_t*)&value;
-    for (size_t i = 0; i < sizeof(real_t); i++)
-    {
-        ptr[i] = *it++;
-    }
+    copy(it, it + sizeof(real_t), ptr);
+    it += sizeof(real_t);
 }
 
 xaml_result XAML_CALL balls_map_internal::serialize(balls_map_enumerator* enumerator, xaml_buffer** ptr) noexcept
 try
 {
     vector<uint8_t> buffer;
-    write_buffer(buffer, balls_record_version);
-    write_buffer(buffer, m_ball_num);
-    write_buffer(buffer, m_start_position);
-    write_buffer(buffer, m_end_position);
-    write_buffer(buffer, m_start_velocity);
-    write_buffer(buffer, (int32_t)m_is_double_score);
-    write_buffer(buffer, m_score);
-    write_buffer(buffer, m_difficulty);
+    auto it = inserter(buffer, buffer.begin());
+    write_buffer(it, balls_record_version);
+    write_buffer(it, m_ball_num);
+    write_buffer(it, m_start_position);
+    write_buffer(it, m_end_position);
+    write_buffer(it, m_start_velocity);
+    write_buffer(it, (int32_t)m_is_double_score);
+    write_buffer(it, m_score);
+    write_buffer(it, m_difficulty);
     for (auto& sr : m_squares)
     {
         for (auto& s : sr)
         {
-            write_buffer(buffer, s);
+            write_buffer(it, s);
         }
     }
     if (enumerator)
     {
         balls_map_enumerator_internal internal;
         XAML_RETURN_IF_FAILED(enumerator->get_internal(&internal));
-        write_buffer(buffer, internal);
+        write_buffer(it, internal);
         xaml_ptr<xaml_vector_view> current_balls;
         {
             xaml_ptr<xaml_object> obj;
@@ -261,20 +258,20 @@ try
         }
         int32_t size;
         XAML_RETURN_IF_FAILED(current_balls->get_size(&size));
-        write_buffer(buffer, (uint64_t)size);
+        write_buffer(it, (uint64_t)size);
         XAML_FOREACH_START(box, current_balls);
         {
             balls_ball b;
             XAML_RETURN_IF_FAILED(xaml_unbox_value(box, &b));
-            write_buffer(buffer, b);
+            write_buffer(it, b);
         }
         XAML_FOREACH_END();
     }
     // for compatibility
     else
     {
-        write_buffer(buffer, balls_map_enumerator_internal{ m_ball_num, m_ball_num, 0 });
-        write_buffer(buffer, uint64_t(0));
+        write_buffer(it, balls_map_enumerator_internal{ m_ball_num, m_ball_num, 0 });
+        write_buffer(it, uint64_t(0));
     }
     return xaml_buffer_new(move(buffer), ptr);
 }
