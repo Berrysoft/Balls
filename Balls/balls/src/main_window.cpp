@@ -150,6 +150,10 @@ xaml_result balls_main_window_impl::show() noexcept
         XAML_RETURN_IF_FAILED(m_window->show());
         XAML_RETURN_IF_FAILED(m_window->set_size({ 450, 600 }));
     }
+    else
+    {
+        XAML_RETURN_IF_FAILED(app->quit(0));
+    }
     return XAML_S_OK;
 }
 
