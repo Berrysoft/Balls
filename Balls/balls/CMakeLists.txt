@@ -46,8 +46,6 @@ target_link_libraries(balls PUBLIC balls_lib xaml_ui_canvas xaml_ui_appmain nowi
 
 if(APPLE)
     install(CODE "
-        include(BundleUtilities)
-        fixup_bundle(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/balls.app \"\" \"${XAML_LIBRARY_OUTPUT_DIRECTORY}\")
         execute_process(COMMAND
             ${CMAKE_COMMAND} -E tar \"cfv\" \"${CMAKE_INSTALL_PREFIX}/balls.app.zip\" --format=zip
                 \"${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/balls.app\"
@@ -55,7 +53,7 @@ if(APPLE)
         )
     ")
 else()
-    install(TARGETS balls balls_lib xaml_global xaml_meta xaml_markup xaml_ui xaml_ui_canvas nowide
+    install(TARGETS balls
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
