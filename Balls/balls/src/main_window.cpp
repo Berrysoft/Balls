@@ -168,7 +168,7 @@ xaml_result balls_main_window_impl::show() noexcept
 xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 {
     xaml_ptr<xaml_string> message, title, instruction;
-    XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
+    XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球 " BALLS_VERSION), &title));
     XAML_RETURN_IF_FAILED(xaml_string_new(U("请选择难度"), &instruction));
     XAML_RETURN_IF_FAILED(xaml_string_new(
         U("所有难度的区别仅为方块上数目大小的概率分布。\n"

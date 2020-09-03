@@ -1,4 +1,4 @@
-project(BallsExecutable VERSION 2.0.1 LANGUAGES CXX)
+project(BallsExecutable VERSION 2.0.2 LANGUAGES CXX)
 
 file(GLOB BALLS_SOURCE "src/*.cpp")
 add_executable(balls ${BALLS_SOURCE})
@@ -18,7 +18,11 @@ if(Git_FOUND)
         string(SUBSTRING ${GIT_HASH} 0 6 GIT_HASH)
         string(CONCAT BALLS_LONG_VERSION ${BALLS_VERSION} "-" ${GIT_HASH})
     endif()
+else()
+    set(BALLS_LONG_VERSION ${BALLS_VERSION})
 endif()
+
+target_compile_definitions(balls PRIVATE "BALLS_VERSION=\"${BALLS_LONG_VERSION}\"")
 
 if(WIN32)
     set_target_properties(balls PROPERTIES WIN32_EXECUTABLE ON)
