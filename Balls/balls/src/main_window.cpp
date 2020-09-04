@@ -165,6 +165,12 @@ xaml_result balls_main_window_impl::show() noexcept
         XAML_RETURN_IF_FAILED(buttons->append(__box));                                \
     }
 
+static constexpr int button_open_record = 200;
+static constexpr int button_simple = 201;
+static constexpr int button_normal = 202;
+static constexpr int button_hard = 203;
+static constexpr int button_compete = 204;
+
 xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 {
     xaml_ptr<xaml_string> message, title, instruction;
@@ -178,10 +184,11 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
         &message));
     xaml_ptr<xaml_vector> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
-    ADD_CUSTOM_BUTTON(buttons, 201, U("简单"));
-    ADD_CUSTOM_BUTTON(buttons, 202, U("正常"));
-    ADD_CUSTOM_BUTTON(buttons, 203, U("困难"));
-    ADD_CUSTOM_BUTTON(buttons, 204, U("打开存档"));
+    ADD_CUSTOM_BUTTON(buttons, button_simple, U("简单"));
+    ADD_CUSTOM_BUTTON(buttons, button_normal, U("正常"));
+    ADD_CUSTOM_BUTTON(buttons, button_hard, U("困难"));
+    ADD_CUSTOM_BUTTON(buttons, button_compete, U("挑战"));
+    ADD_CUSTOM_BUTTON(buttons, button_open_record, U("打开存档"));
 #ifdef XAML_UI_COCOA
     ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_cancel, U("关闭"));
 #endif // XAML_UI_COCOA
@@ -189,17 +196,14 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
     XAML_RETURN_IF_FAILED(xaml_msgbox_custom(m_window, message, title, instruction, xaml_msgbox_info, buttons, &result));
     switch ((int)result)
     {
-    case 201:
-        XAML_RETURN_IF_FAILED(m_map->set_difficulty(balls_difficulty_simple));
-        break;
-    case 202:
-        XAML_RETURN_IF_FAILED(m_map->set_difficulty(balls_difficulty_normal));
-        break;
-    case 203:
-        XAML_RETURN_IF_FAILED(m_map->set_difficulty(balls_difficulty_hard));
-        break;
-    case 204:
+    case button_open_record:
         return show_open(pvalue);
+    case button_simple:
+    case button_normal:
+    case button_hard:
+    case button_compete:
+        XAML_RETURN_IF_FAILED(m_map->set_difficulty((balls_difficulty)((int)result - button_simple)));
+        break;
     default:
         *pvalue = false;
         return XAML_S_OK;
@@ -581,6 +585,7 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
 static constexpr string_view simple_text = U("简单");
 static constexpr string_view normal_text = U("正常");
 static constexpr string_view hard_text = U("困难");
+static constexpr string_view compete_text = U("挑战");
 
 static constexpr string_view get_difficulty_text(balls_difficulty difficulty) noexcept
 {
@@ -592,6 +597,8 @@ static constexpr string_view get_difficulty_text(balls_difficulty difficulty) no
         return normal_text;
     case balls_difficulty_hard:
         return hard_text;
+    case balls_difficulty_compete:
+        return compete_text;
     default:
         return {};
     }

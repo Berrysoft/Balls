@@ -35,7 +35,8 @@ typedef enum balls_difficulty
 {
     balls_difficulty_simple,
     balls_difficulty_normal,
-    balls_difficulty_hard
+    balls_difficulty_hard,
+    balls_difficulty_compete
 } balls_difficulty;
 
 XAML_TYPE(balls_difficulty, { 0x7471241e, 0x2381, 0x4db2, { 0x85, 0x42, 0xd5, 0xe9, 0x26, 0x47, 0x22, 0xe4 } })

@@ -703,7 +703,6 @@ xaml_result balls_map_internal::reset(bool* pvalue) noexcept
     }
 
     //临时声明一个正态分布
-    //三个难度在游戏开始有所介绍
     normal_distribution<double> distr;
     switch (m_difficulty)
     {
@@ -715,6 +714,9 @@ xaml_result balls_map_internal::reset(bool* pvalue) noexcept
         break;
     case balls_difficulty_hard:
         distr = normal_distribution<double>(m_ball_num * 1.5, m_ball_num / 2.0);
+        break;
+    case balls_difficulty_compete:
+        distr = normal_distribution<double>(pow(m_ball_num, 1.1), m_ball_num / 3.0);
         break;
     }
     //分布格子，只取正值
@@ -753,7 +755,7 @@ xaml_result balls_map_internal::reset(bool* pvalue) noexcept
     //加号，球数不能太多
     if (m_ball_num < numeric_limits<int32_t>::max() / 2)
     {
-        if (m_prob_dist(m_random) < 0.5)
+        if (m_difficulty == balls_difficulty_compete || m_prob_dist(m_random) < 0.5)
         {
             int32_t nindex = m_index_dist(m_random);
             m_squares[0][nindex] = balls_special_new_ball;
