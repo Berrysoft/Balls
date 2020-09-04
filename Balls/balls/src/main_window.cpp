@@ -13,7 +13,7 @@
 
 using namespace std;
 
-struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_main_window, xaml_object>
+struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_main_window>
 {
     xaml_ptr<xaml_window> m_window{};
     xaml_ptr<xaml_timer> m_timer{};

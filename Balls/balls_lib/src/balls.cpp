@@ -113,7 +113,7 @@ struct balls_map_internal
     }
 };
 
-struct balls_map_impl : xaml_implement<balls_map_impl, balls_map, xaml_object>
+struct balls_map_impl : xaml_implement<balls_map_impl, balls_map>
 {
     balls_map_internal m_internal{};
 
@@ -155,7 +155,7 @@ xaml_result XAML_CALL balls_map_new(balls_map** ptr) noexcept
     return xaml_object_init<balls_map_impl>(ptr);
 }
 
-struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, balls_map_enumerator, xaml_enumerator, xaml_object>
+struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, balls_map_enumerator>
 {
     balls_map_internal* m_base;
 
