@@ -1,4 +1,5 @@
 ﻿#include <balls/balls.h>
+#include <cstring>
 #include <iterator>
 #include <random>
 #include <xaml/event.h>
