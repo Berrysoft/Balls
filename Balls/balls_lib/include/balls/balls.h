@@ -1,10 +1,15 @@
 #ifndef BALLS_H
 #define BALLS_H
 
+#ifdef __cplusplus
+    #include <compare>
+#endif // __cplusplus
+
 #include <xaml/buffer.h>
 #include <xaml/enumerable.h>
 #include <xaml/meta/meta_macros.h>
 #include <xaml/ui/drawing.h>
+#include <xaml/vector.h>
 
 #ifndef BALLS_LIB_API
     #define BALLS_LIB_API __XAML_IMPORT
@@ -16,6 +21,10 @@ struct balls_ball
 {
     xaml_point pos;
     xaml_point speed;
+
+#ifdef __cplusplus
+    auto operator<=>(balls_ball const&) const = default;
+#endif // __cplusplus
 };
 
 XAML_TYPE(balls_ball, { 0x7185ab37, 0xe6a0, 0x418b, { 0x9a, 0xc3, 0x6e, 0x4f, 0x74, 0xcc, 0xea, 0x74 } })
@@ -63,51 +72,34 @@ struct balls_map_enumerator_internal
 
 XAML_TYPE(balls_map_enumerator_internal, { 0x4a0f5f82, 0x898f, 0x46b7, { 0xbc, 0xe6, 0xbe, 0x10, 0x49, 0x6d, 0x25, 0xb0 } })
 
+#ifndef xaml_enumerator_1__balls_ball_defined
+    #define xaml_enumerator_1__balls_ball_defined
+XAML_ENUMERATOR_1_TYPE(XAML_T_V(balls_ball))
+#endif // !xaml_enumerator_1__balls_ball_defined
+
+#ifndef xaml_vector_1__balls_ball_defined
+    #define xaml_vector_1__balls_ball_defined
+XAML_VECTOR_1_TYPE(XAML_T_V(balls_ball))
+#endif // !xaml_vector_1__balls_ball_defined
+
+#ifndef xaml_enumerator_1__xaml_vector_1__balls_ball_defined
+    #define xaml_enumerator_1__xaml_vector_1__balls_ball_defined
+XAML_ENUMERATOR_1_TYPE(XAML_T_O(xaml_vector_1__balls_ball))
+#endif // !xaml_enumerator_1__xaml_vector_1__balls_ball_defined
+
 XAML_CLASS(balls_map_enumerator, { 0x4d8f6447, 0x6046, 0x4831, { 0xb4, 0x97, 0xc4, 0xe7, 0x47, 0xad, 0x3d, 0x1e } })
 
-#define BALLS_MAP_ENUMERATOR(type)                 \
-    XAML_VTBL_INHERIT(XAML_ENUMERATOR_VTBL(type)); \
-    XAML_METHOD(get_is_end_shooting, type, bool*); \
+#define BALLS_MAP_ENUMERATOR(type)                                                                          \
+    XAML_VTBL_INHERIT(XAML_ENUMERATOR_T_VTBL(type, xaml_vector_1__balls_ball, xaml_vector_1__balls_ball*)); \
+    XAML_METHOD(get_is_end_shooting, type, bool*);                                                          \
     XAML_PROP(internal, type, balls_map_enumerator_internal*, balls_map_enumerator_internal XAML_CONST_REF)
 
-XAML_DECL_INTERFACE_(balls_map_enumerator, xaml_enumerator)
+XAML_DECL_INTERFACE_(balls_map_enumerator, xaml_enumerator_1__xaml_vector_1__balls_ball)
 {
     XAML_DECL_VTBL(balls_map_enumerator, BALLS_MAP_ENUMERATOR);
 };
 
 typedef XAML_STD int32_t balls_map_t[balls_max_rows][balls_max_columns];
-
-XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0xf5, 0x22, 0xa7, 0x1e } })
-
-#define BALLS_MAP_VTBL(type)                                                        \
-    XAML_VTBL_INHERIT(XAML_OBJECT_VTBL(type));                                      \
-    XAML_PROP(ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);                 \
-    XAML_PROP(remain_ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);          \
-    XAML_PROP(score, type, XAML_STD uint64_t*, XAML_STD uint64_t);                  \
-    XAML_PROP(difficulty, type, balls_difficulty*, balls_difficulty);               \
-    XAML_EVENT(ball_score_changed, type);                                           \
-    XAML_PROP(start_position, type, xaml_point*, xaml_point XAML_CONST_REF);        \
-    XAML_PROP(end_position, type, xaml_point*, xaml_point XAML_CONST_REF);          \
-    XAML_PROP(start_velocity, type, xaml_point*, xaml_point XAML_CONST_REF);        \
-    XAML_PROP(sample_position, type, xaml_point*, xaml_point XAML_CONST_REF);       \
-    XAML_METHOD(get_is_double_score, type, bool*);                                  \
-    XAML_METHOD(get_map, type, xaml_vector**);                                      \
-    XAML_METHOD(get_is_over, type, bool*);                                          \
-    XAML_METHOD(set_sample, type, xaml_point XAML_CONST_REF);                       \
-    XAML_METHOD(get_map, type, balls_map_t const**);                                \
-    XAML_METHOD(start, type, balls_map_enumerator**);                               \
-    XAML_METHOD(start_by, type, xaml_point XAML_CONST_REF, balls_map_enumerator**); \
-    XAML_METHOD(reset, type, bool*);                                                \
-    XAML_METHOD(reset_all, type);                                                   \
-    XAML_METHOD(serialize, type, balls_map_enumerator*, xaml_buffer**);             \
-    XAML_METHOD(deserialize, type, xaml_buffer*, balls_map_enumerator**)
-
-XAML_DECL_INTERFACE_(balls_map, xaml_object)
-{
-    XAML_DECL_VTBL(balls_map, BALLS_MAP_VTBL);
-};
-
-EXTERN_C BALLS_LIB_API xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
 
 typedef struct balls_ball_score_changed_args balls_ball_score_changed_args;
 
@@ -119,5 +111,36 @@ struct balls_ball_score_changed_args
 };
 
 XAML_TYPE(balls_ball_score_changed_args, { 0xa813cb25, 0x86fe, 0x4437, { 0xa6, 0x48, 0xe9, 0xe5, 0x59, 0x79, 0x8d, 0x1f } })
+
+XAML_CLASS(balls_map, { 0x8f267939, 0x7dd5, 0x47d8, { 0xb5, 0xe1, 0x20, 0x32, 0xf5, 0x22, 0xa7, 0x1e } })
+
+#define BALLS_MAP_VTBL(type)                                                          \
+    XAML_VTBL_INHERIT(XAML_OBJECT_VTBL(type));                                        \
+    XAML_PROP(ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);                   \
+    XAML_PROP(remain_ball_num, type, XAML_STD int32_t*, XAML_STD int32_t);            \
+    XAML_PROP(score, type, XAML_STD uint64_t*, XAML_STD uint64_t);                    \
+    XAML_PROP(difficulty, type, balls_difficulty*, balls_difficulty);                 \
+    XAML_EVENT(ball_score_changed, type, xaml_object, balls_ball_score_changed_args); \
+    XAML_PROP(start_position, type, xaml_point*, xaml_point XAML_CONST_REF);          \
+    XAML_PROP(end_position, type, xaml_point*, xaml_point XAML_CONST_REF);            \
+    XAML_PROP(start_velocity, type, xaml_point*, xaml_point XAML_CONST_REF);          \
+    XAML_PROP(sample_position, type, xaml_point*, xaml_point XAML_CONST_REF);         \
+    XAML_METHOD(get_is_double_score, type, bool*);                                    \
+    XAML_METHOD(get_is_over, type, bool*);                                            \
+    XAML_METHOD(set_sample, type, xaml_point XAML_CONST_REF);                         \
+    XAML_METHOD(get_map, type, balls_map_t const**);                                  \
+    XAML_METHOD(start, type, balls_map_enumerator**);                                 \
+    XAML_METHOD(start_by, type, xaml_point XAML_CONST_REF, balls_map_enumerator**);   \
+    XAML_METHOD(reset, type, bool*);                                                  \
+    XAML_METHOD(reset_all, type);                                                     \
+    XAML_METHOD(serialize, type, balls_map_enumerator*, xaml_buffer**);               \
+    XAML_METHOD(deserialize, type, xaml_buffer*, balls_map_enumerator**)
+
+XAML_DECL_INTERFACE_(balls_map, xaml_object)
+{
+    XAML_DECL_VTBL(balls_map, BALLS_MAP_VTBL);
+};
+
+EXTERN_C BALLS_LIB_API xaml_result XAML_CALL balls_map_new(balls_map**) XAML_NOEXCEPT;
 
 #endif // !BALLS_H

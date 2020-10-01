@@ -35,21 +35,21 @@ struct balls_main_window_impl : xaml_implement<balls_main_window_impl, balls_mai
     xaml_result XAML_CALL show_save(bool*) noexcept;
     xaml_result XAML_CALL open_record(string_view, bool*) noexcept;
 
-    xaml_result XAML_CALL on_canvas_redraw(xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>) noexcept;
-    xaml_result XAML_CALL on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args) noexcept;
-    xaml_result XAML_CALL on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept;
-    xaml_result XAML_CALL on_window_closing(xaml_ptr<xaml_window>, xaml_ptr<xaml_box>) noexcept;
-    xaml_result XAML_CALL on_timer_tick(xaml_ptr<xaml_timer>) noexcept;
-    xaml_result XAML_CALL on_canvas_mouse_up(xaml_ptr<xaml_canvas>, xaml_mouse_button) noexcept;
-    xaml_result XAML_CALL on_canvas_mouse_move(xaml_ptr<xaml_canvas>, xaml_point) noexcept;
+    xaml_result XAML_CALL on_canvas_redraw(xaml_object*, xaml_drawing_context*) noexcept;
+    xaml_result XAML_CALL on_map_ball_score_changed(xaml_object*, balls_ball_score_changed_args) noexcept;
+    xaml_result XAML_CALL on_window_size_changed(xaml_object*, xaml_size) noexcept;
+    xaml_result XAML_CALL on_window_closing(xaml_object*, xaml_box<bool>*) noexcept;
+    xaml_result XAML_CALL on_timer_tick(xaml_object*, xaml_event_args*) noexcept;
+    xaml_result XAML_CALL on_canvas_mouse_up(xaml_object*, xaml_mouse_button) noexcept;
+    xaml_result XAML_CALL on_canvas_mouse_move(xaml_object*, xaml_point) noexcept;
 };
 
 xaml_result balls_main_window_impl::init() noexcept
 {
     XAML_RETURN_IF_FAILED(xaml_timer_new_interval(10ms, &m_timer));
     {
-        xaml_ptr<xaml_delegate> callback;
-        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_timer>>(
+        xaml_ptr<xaml_delegate<xaml_object, xaml_event_args>> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new(
             xaml_mem_fn(&balls_main_window_impl::on_timer_tick, this), &callback)));
         int32_t token;
         XAML_RETURN_IF_FAILED(m_timer->add_tick(callback, &token));
@@ -57,8 +57,8 @@ xaml_result balls_main_window_impl::init() noexcept
 
     XAML_RETURN_IF_FAILED(balls_map_new(&m_map));
     {
-        xaml_ptr<xaml_delegate> callback;
-        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<balls_map>, balls_ball_score_changed_args>(
+        xaml_ptr<xaml_delegate<xaml_object, balls_ball_score_changed_args>> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new(
             xaml_mem_fn(&balls_main_window_impl::on_map_ball_score_changed, this), &callback)));
         int32_t token;
         XAML_RETURN_IF_FAILED(m_map->add_ball_score_changed(callback, &token));
@@ -67,15 +67,15 @@ xaml_result balls_main_window_impl::init() noexcept
     XAML_RETURN_IF_FAILED(xaml_window_new(&m_window));
     XAML_RETURN_IF_FAILED(m_window->set_location({ 100, 100 }));
     {
-        xaml_ptr<xaml_delegate> callback;
-        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_size>(
+        xaml_ptr<xaml_delegate<xaml_object, xaml_size>> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new(
             xaml_mem_fn(&balls_main_window_impl::on_window_size_changed, this), &callback)));
         int32_t token;
         XAML_RETURN_IF_FAILED(m_window->add_size_changed(callback, &token));
     }
     {
-        xaml_ptr<xaml_delegate> callback;
-        XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_window>, xaml_ptr<xaml_box>>(
+        xaml_ptr<xaml_delegate<xaml_object, xaml_box<bool>>> callback;
+        XAML_RETURN_IF_FAILED((xaml_delegate_new(
             xaml_mem_fn(&balls_main_window_impl::on_window_closing, this), &callback)));
         int32_t token;
         XAML_RETURN_IF_FAILED(m_window->add_closing(callback, &token));
@@ -85,22 +85,22 @@ xaml_result balls_main_window_impl::init() noexcept
         XAML_RETURN_IF_FAILED(m_canvas->set_halignment(xaml_halignment_stretch));
         XAML_RETURN_IF_FAILED(m_canvas->set_valignment(xaml_valignment_stretch));
         {
-            xaml_ptr<xaml_delegate> callback;
-            XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_ptr<xaml_drawing_context>>(
+            xaml_ptr<xaml_delegate<xaml_object, xaml_drawing_context>> callback;
+            XAML_RETURN_IF_FAILED((xaml_delegate_new(
                 xaml_mem_fn(&balls_main_window_impl::on_canvas_redraw, this), &callback)));
             int32_t token;
             XAML_RETURN_IF_FAILED(m_canvas->add_redraw(callback, &token));
         }
         {
-            xaml_ptr<xaml_delegate> callback;
-            XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_mouse_button>(
+            xaml_ptr<xaml_delegate<xaml_object, xaml_mouse_button>> callback;
+            XAML_RETURN_IF_FAILED((xaml_delegate_new(
                 xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_up, this), &callback)));
             int32_t token;
             XAML_RETURN_IF_FAILED(m_canvas->add_mouse_up(callback, &token));
         }
         {
-            xaml_ptr<xaml_delegate> callback;
-            XAML_RETURN_IF_FAILED((xaml_delegate_new_noexcept<void, xaml_ptr<xaml_canvas>, xaml_point>(
+            xaml_ptr<xaml_delegate<xaml_object, xaml_point>> callback;
+            XAML_RETURN_IF_FAILED((xaml_delegate_new(
                 xaml_mem_fn(&balls_main_window_impl::on_canvas_mouse_move, this), &callback)));
             int32_t token;
             XAML_RETURN_IF_FAILED(m_canvas->add_mouse_move(callback, &token));
@@ -115,7 +115,7 @@ xaml_result balls_main_window_impl::show() noexcept
 {
     xaml_ptr<xaml_application> app;
     XAML_RETURN_IF_FAILED(xaml_application_current(&app));
-    xaml_ptr<xaml_vector_view> args;
+    xaml_ptr<xaml_vector_view<xaml_string>> args;
     XAML_RETURN_IF_FAILED(app->get_cmd_lines(&args));
     int32_t size;
     XAML_RETURN_IF_FAILED(args->get_size(&size));
@@ -124,10 +124,8 @@ xaml_result balls_main_window_impl::show() noexcept
     {
         for (int32_t i = 0; i < size; i++)
         {
-            xaml_ptr<xaml_object> item;
-            XAML_RETURN_IF_FAILED(args->get_at(i, &item));
             xaml_ptr<xaml_string> filename;
-            XAML_RETURN_IF_FAILED(item->query(&filename));
+            XAML_RETURN_IF_FAILED(args->get_at(i, &filename));
             XAML_RETURN_IF_FAILED(to_string_view(filename, &view));
             if (!filesystem::exists(nowide::filesystem::path{ view }))
             {
@@ -160,9 +158,7 @@ xaml_result balls_main_window_impl::show() noexcept
 #define ADD_CUSTOM_BUTTON(buttons, result, text)                                      \
     {                                                                                 \
         xaml_msgbox_custom_button __bsimple = { (xaml_msgbox_result)(result), text }; \
-        xaml_ptr<xaml_object> __box;                                                  \
-        XAML_RETURN_IF_FAILED(xaml_box_value(__bsimple, &__box));                     \
-        XAML_RETURN_IF_FAILED(buttons->append(__box));                                \
+        XAML_RETURN_IF_FAILED(buttons->append(__bsimple));                            \
     }
 
 static constexpr int button_open_record = 200;
@@ -182,7 +178,7 @@ xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
           "减号使当前球消失；美元符号使本轮得分加倍。\n"
           "按右键暂停。请不要过于依赖示例球。"),
         &message));
-    xaml_ptr<xaml_vector> buttons;
+    xaml_ptr<xaml_vector<xaml_msgbox_custom_button>> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
     ADD_CUSTOM_BUTTON(buttons, button_simple, U("简单"));
     ADD_CUSTOM_BUTTON(buttons, button_normal, U("正常"));
@@ -220,19 +216,15 @@ xaml_result balls_main_window_impl::show_open(bool* pvalue) noexcept
     xaml_ptr<xaml_open_filebox> open;
     XAML_RETURN_IF_FAILED(xaml_open_filebox_new(&open));
     {
-        xaml_ptr<xaml_vector> filters;
+        xaml_ptr<xaml_vector<xaml_filebox_filter>> filters;
         XAML_RETURN_IF_FAILED(xaml_vector_new(&filters));
         {
             xaml_filebox_filter f{ U("存档文件"), U("*.balls") };
-            xaml_ptr<xaml_object> box;
-            XAML_RETURN_IF_FAILED(xaml_box_value(f, &box));
-            XAML_RETURN_IF_FAILED(filters->append(box));
+            XAML_RETURN_IF_FAILED(filters->append(f));
         }
         {
             xaml_filebox_filter f{ U("所有文件"), U("*.*") };
-            xaml_ptr<xaml_object> box;
-            XAML_RETURN_IF_FAILED(xaml_box_value(f, &box));
-            XAML_RETURN_IF_FAILED(filters->append(box));
+            XAML_RETURN_IF_FAILED(filters->append(f));
         }
         XAML_RETURN_IF_FAILED(open->set_filters(filters));
     }
@@ -265,7 +257,7 @@ xaml_result balls_main_window_impl::open_record(string_view filename, bool* pval
         xaml_ptr<xaml_string> message, title;
         XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
         XAML_RETURN_IF_FAILED(xaml_string_new(U("存档是由本游戏的不同版本创建的，无法打开"), &message));
-        xaml_ptr<xaml_vector> buttons;
+        xaml_ptr<xaml_vector<xaml_msgbox_custom_button>> buttons;
         XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
         ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_ok, U("关闭"));
         xaml_msgbox_result result;
@@ -291,7 +283,7 @@ xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
     uint64_t score;
     XAML_RETURN_IF_FAILED(m_map->get_score(&score));
     XAML_RETURN_IF_FAILED(xaml_string_new(sf::sprint(U("难度：{}\n球数：{}\n分数：{}"), difficulty, ball_num, score), &message));
-    xaml_ptr<xaml_vector> buttons;
+    xaml_ptr<xaml_vector<xaml_msgbox_custom_button>> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
     ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_yes, U("重新开始"));
     ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_no, U("关闭"));
@@ -306,7 +298,7 @@ xaml_result balls_main_window_impl::show_close(bool* pvalue) noexcept
     xaml_ptr<xaml_string> message, title;
     XAML_RETURN_IF_FAILED(xaml_string_new(U("二维弹球"), &title));
     XAML_RETURN_IF_FAILED(xaml_string_new(U("游戏尚未结束，是否存档？"), &message));
-    xaml_ptr<xaml_vector> buttons;
+    xaml_ptr<xaml_vector<xaml_msgbox_custom_button>> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
     ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_yes, U("保存"));
     ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_no, U("不保存"));
@@ -336,13 +328,11 @@ xaml_result balls_main_window_impl::show_save(bool* pvalue) noexcept
     xaml_ptr<xaml_save_filebox> save;
     XAML_RETURN_IF_FAILED(xaml_save_filebox_new(&save));
     {
-        xaml_ptr<xaml_vector> filters;
+        xaml_ptr<xaml_vector<xaml_filebox_filter>> filters;
         XAML_RETURN_IF_FAILED(xaml_vector_new(&filters));
         {
             xaml_filebox_filter f{ U("存档文件"), U("*.balls") };
-            xaml_ptr<xaml_object> box;
-            XAML_RETURN_IF_FAILED(xaml_box_value(f, &box));
-            XAML_RETURN_IF_FAILED(filters->append(box));
+            XAML_RETURN_IF_FAILED(filters->append(f));
         }
         XAML_RETURN_IF_FAILED(save->set_filters(filters));
     }
@@ -431,8 +421,10 @@ static constexpr xaml_color get_circle_fill(int32_t t) noexcept
     }
 }
 
-xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, xaml_ptr<xaml_drawing_context> dc) noexcept
+xaml_result balls_main_window_impl::on_canvas_redraw(xaml_object* sender, xaml_drawing_context* dc) noexcept
 {
+    xaml_ptr<xaml_canvas> cv;
+    XAML_RETURN_IF_FAILED(sender->query(&cv));
     //画背景
     {
         xaml_ptr<xaml_solid_brush> bback;
@@ -484,16 +476,10 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_ptr<xaml_canvas> cv, x
     //画所有运动中的球
     if (m_enumerator)
     {
-        xaml_ptr<xaml_vector_view> balls;
+        xaml_ptr<xaml_vector<balls_ball>> balls;
+        XAML_RETURN_IF_FAILED(m_enumerator->get_current(&balls));
+        XAML_FOREACH_START(balls_ball, b, balls);
         {
-            xaml_ptr<xaml_object> obj;
-            XAML_RETURN_IF_FAILED(m_enumerator->get_current(&obj));
-            XAML_RETURN_IF_FAILED(obj->query(&balls));
-        }
-        XAML_FOREACH_START(ball_item, balls);
-        {
-            balls_ball b;
-            XAML_RETURN_IF_FAILED(xaml_unbox_value(ball_item, &b));
             XAML_RETURN_IF_FAILED(dc->fill_ellipse(bball, get_ball_rect({ dx, dy }, b.pos, extend)));
         }
         XAML_FOREACH_END();
@@ -604,7 +590,7 @@ static constexpr string_view get_difficulty_text(balls_difficulty difficulty) no
     }
 }
 
-xaml_result balls_main_window_impl::on_map_ball_score_changed(xaml_ptr<balls_map>, balls_ball_score_changed_args args) noexcept
+xaml_result balls_main_window_impl::on_map_ball_score_changed(xaml_object*, balls_ball_score_changed_args args) noexcept
 {
     balls_difficulty difficulty;
     XAML_RETURN_IF_FAILED(m_map->get_difficulty(&difficulty));
@@ -622,7 +608,7 @@ xaml_result balls_main_window_impl::on_map_ball_score_changed(xaml_ptr<balls_map
     return m_window->set_title(title_str);
 }
 
-xaml_result balls_main_window_impl::on_window_size_changed(xaml_ptr<xaml_window>, xaml_size) noexcept
+xaml_result balls_main_window_impl::on_window_size_changed(xaml_object*, xaml_size) noexcept
 {
     if (m_canvas)
     {
@@ -640,7 +626,7 @@ xaml_result balls_main_window_impl::on_window_size_changed(xaml_ptr<xaml_window>
     return XAML_S_OK;
 }
 
-xaml_result balls_main_window_impl::on_window_closing(xaml_ptr<xaml_window>, xaml_ptr<xaml_box> box) noexcept
+xaml_result balls_main_window_impl::on_window_closing(xaml_object*, xaml_box<bool>* box) noexcept
 {
     bool over;
     XAML_RETURN_IF_FAILED(m_map->get_is_over(&over));
@@ -657,7 +643,7 @@ xaml_result balls_main_window_impl::on_window_closing(xaml_ptr<xaml_window>, xam
     return XAML_S_OK;
 }
 
-xaml_result balls_main_window_impl::on_timer_tick(xaml_ptr<xaml_timer>) noexcept
+xaml_result balls_main_window_impl::on_timer_tick(xaml_object*, xaml_event_args*) noexcept
 {
     bool move;
     XAML_RETURN_IF_FAILED(m_enumerator->move_next(&move));
@@ -691,7 +677,7 @@ static constexpr xaml_point get_com_point(xaml_point const& delta, xaml_point co
     return (rp - delta) * extend;
 }
 
-xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_up(xaml_ptr<xaml_canvas>, xaml_mouse_button button) noexcept
+xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_up(xaml_object*, xaml_mouse_button button) noexcept
 {
     switch (button)
     {
@@ -723,7 +709,7 @@ xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_up(xaml_ptr<xaml_c
     return XAML_S_OK;
 }
 
-xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_move(xaml_ptr<xaml_canvas>, xaml_point p) noexcept
+xaml_result XAML_CALL balls_main_window_impl::on_canvas_mouse_move(xaml_object*, xaml_point p) noexcept
 {
     mouse_location = p;
     double extend = balls_client_width / dw;

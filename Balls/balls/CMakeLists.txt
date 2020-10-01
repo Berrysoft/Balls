@@ -1,4 +1,4 @@
-project(BallsExecutable VERSION 2.1.3 LANGUAGES CXX)
+project(BallsExecutable VERSION 2.2.4 LANGUAGES CXX)
 
 file(GLOB BALLS_SOURCE "src/*.cpp")
 add_executable(balls ${BALLS_SOURCE})

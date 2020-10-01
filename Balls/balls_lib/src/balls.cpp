@@ -36,7 +36,7 @@ struct balls_map_internal
 
     virtual ~balls_map_internal() {}
 
-    XAML_EVENT_IMPL(ball_score_changed)
+    XAML_EVENT_IMPL(ball_score_changed, xaml_object, balls_ball_score_changed_args)
 
     XAML_PROP_IMPL_BASE(ball_num, int32_t, int32_t*)
     XAML_PROP_IMPL_BASE(remain_ball_num, int32_t, int32_t*)
@@ -47,7 +47,7 @@ struct balls_map_internal
         if (m_ball_num != value)
         {
             m_ball_num = value;
-            return on_ball_score_changed(m_outer_this, balls_ball_score_changed_args{ m_ball_num, m_remain_ball_num, m_score });
+            return m_ball_score_changed->invoke(m_outer_this, { m_ball_num, m_remain_ball_num, m_score });
         }
         return XAML_S_OK;
     }
@@ -57,7 +57,7 @@ struct balls_map_internal
         if (m_remain_ball_num != value)
         {
             m_remain_ball_num = value;
-            return on_ball_score_changed(m_outer_this, balls_ball_score_changed_args{ m_ball_num, m_remain_ball_num, m_score });
+            return m_ball_score_changed->invoke(m_outer_this, { m_ball_num, m_remain_ball_num, m_score });
         }
         return XAML_S_OK;
     }
@@ -67,7 +67,7 @@ struct balls_map_internal
         if (m_score != value)
         {
             m_score = value;
-            return on_ball_score_changed(m_outer_this, balls_ball_score_changed_args{ m_ball_num, m_remain_ball_num, m_score });
+            return m_ball_score_changed->invoke(m_outer_this, { m_ball_num, m_remain_ball_num, m_score });
         }
         return XAML_S_OK;
     }
@@ -80,7 +80,6 @@ struct balls_map_internal
     XAML_PROP_IMPL(sample_position, xaml_point, xaml_point*, xaml_point const&)
 
     XAML_PROP_IMPL_BASE(is_double_score, bool, bool*)
-    XAML_PROP_PTR_IMPL_BASE(map, xaml_vector)
 
     xaml_result XAML_CALL get_is_over(bool*) noexcept;
 
@@ -124,7 +123,7 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map>
     XAML_PROP_INTERNAL_IMPL(score, uint64_t*, uint64_t)
     XAML_PROP_INTERNAL_IMPL(difficulty, balls_difficulty*, balls_difficulty)
 
-    XAML_EVENT_INTERNAL_IMPL(ball_score_changed)
+    XAML_EVENT_INTERNAL_IMPL(ball_score_changed, xaml_object, balls_ball_score_changed_args)
 
     XAML_PROP_INTERNAL_IMPL(start_position, xaml_point*, xaml_point const&)
     XAML_PROP_INTERNAL_IMPL(end_position, xaml_point*, xaml_point const&)
@@ -132,7 +131,6 @@ struct balls_map_impl : xaml_implement<balls_map_impl, balls_map>
     XAML_PROP_INTERNAL_IMPL(sample_position, xaml_point*, xaml_point const&)
 
     XAML_PROP_INTERNAL_IMPL_BASE(is_double_score, bool*)
-    XAML_PROP_INTERNAL_IMPL_BASE(map, xaml_vector**)
 
     XAML_PROP_INTERNAL_IMPL_BASE(is_over, bool*)
     XAML_PROP_INTERNAL_IMPL_BASE(map, balls_map_t const**)
@@ -162,12 +160,12 @@ struct balls_map_enumerator_impl : xaml_implement<balls_map_enumerator_impl, bal
     int32_t m_ball_num;
     int32_t m_stopped_num;
     int32_t m_loop;
-    xaml_ptr<xaml_vector> m_current_balls;
+    xaml_ptr<xaml_vector<balls_ball>> m_current_balls;
 
     balls_map_enumerator_impl() noexcept : m_stopped_num(0), m_loop(3) {}
 
     xaml_result XAML_CALL move_next(bool* pvalue) noexcept override;
-    xaml_result XAML_CALL get_current(xaml_object** ptr) noexcept override { return m_current_balls.query(ptr); }
+    xaml_result XAML_CALL get_current(xaml_vector<balls_ball>** ptr) noexcept override { return m_current_balls.query(ptr); }
 
     xaml_result XAML_CALL bounce(balls_ball& p, bool* pvalue) noexcept;
     xaml_result XAML_CALL increase_base_score() noexcept;
@@ -250,19 +248,13 @@ try
         balls_map_enumerator_internal internal;
         XAML_RETURN_IF_FAILED(enumerator->get_internal(&internal));
         write_buffer(it, internal);
-        xaml_ptr<xaml_vector_view> current_balls;
-        {
-            xaml_ptr<xaml_object> obj;
-            XAML_RETURN_IF_FAILED(enumerator->get_current(&obj));
-            XAML_RETURN_IF_FAILED(obj->query(&current_balls));
-        }
+        xaml_ptr<xaml_vector<balls_ball>> current_balls;
+        XAML_RETURN_IF_FAILED(enumerator->get_current(&current_balls));
         int32_t size;
         XAML_RETURN_IF_FAILED(current_balls->get_size(&size));
         write_buffer(it, (uint64_t)size);
-        XAML_FOREACH_START(box, current_balls);
+        XAML_FOREACH_START(balls_ball, b, current_balls);
         {
-            balls_ball b;
-            XAML_RETURN_IF_FAILED(xaml_unbox_value(box, &b));
             write_buffer(it, b);
         }
         XAML_FOREACH_END();
@@ -320,9 +312,7 @@ try
         {
             balls_ball b;
             read_buffer(data, b);
-            xaml_ptr<xaml_object> box;
-            XAML_RETURN_IF_FAILED(xaml_box_value(b, &box));
-            XAML_RETURN_IF_FAILED(impl->m_current_balls->append(box));
+            XAML_RETURN_IF_FAILED(impl->m_current_balls->append(b));
         }
     }
     XAML_RETURN_IF_FAILED(enumerator.query(penumerator));
@@ -594,23 +584,18 @@ xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
     {
         //增加一个新的球
         balls_ball new_ball{ m_base->m_start_position, m_base->m_start_velocity };
-        xaml_ptr<xaml_object> box;
-        XAML_RETURN_IF_FAILED(xaml_box_value(new_ball, &box));
-        XAML_RETURN_IF_FAILED(m_current_balls->append(box));
+        XAML_RETURN_IF_FAILED(m_current_balls->append(new_ball));
         XAML_RETURN_IF_FAILED(m_base->set_remain_ball_num(m_base->m_remain_ball_num - 1));
     }
     int32_t size;
     XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
     for (int32_t i = 0; i < size;)
     {
-        xaml_ptr<xaml_object> box_ball;
-        XAML_RETURN_IF_FAILED(m_current_balls->get_at(i, &box_ball));
-        xaml_ptr<xaml_box> box;
-        XAML_RETURN_IF_FAILED(box_ball->query(&box));
         balls_ball ball;
-        XAML_RETURN_IF_FAILED(box->get_value(&ball));
+        XAML_RETURN_IF_FAILED(m_current_balls->get_at(i, &ball));
         bool b;
         XAML_RETURN_IF_FAILED(bounce(ball, &b));
+        XAML_RETURN_IF_FAILED(m_current_balls->set_at(i, ball));
         if (b)
         {
             m_stopped_num++;
@@ -637,7 +622,6 @@ xaml_result balls_map_enumerator_impl::move_next(bool* pvalue) noexcept
         {
             i++;
         }
-        XAML_RETURN_IF_FAILED(box->set_value(ball));
         XAML_RETURN_IF_FAILED(m_current_balls->get_size(&size));
     }
     *pvalue = m_ball_num > m_stopped_num;
