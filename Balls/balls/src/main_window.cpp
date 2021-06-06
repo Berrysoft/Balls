@@ -167,6 +167,28 @@ static constexpr int button_normal = 202;
 static constexpr int button_hard = 203;
 static constexpr int button_compete = 204;
 
+static constexpr string_view simple_text = U("简单");
+static constexpr string_view normal_text = U("正常");
+static constexpr string_view hard_text = U("困难");
+static constexpr string_view compete_text = U("挑战");
+
+static constexpr string_view get_difficulty_text(balls_difficulty difficulty) noexcept
+{
+    switch (difficulty)
+    {
+    case balls_difficulty_simple:
+        return simple_text;
+    case balls_difficulty_normal:
+        return normal_text;
+    case balls_difficulty_hard:
+        return hard_text;
+    case balls_difficulty_compete:
+        return compete_text;
+    default:
+        return {};
+    }
+}
+
 xaml_result balls_main_window_impl::init_balls(bool* pvalue) noexcept
 {
     xaml_ptr<xaml_string> message, title, instruction;
@@ -282,7 +304,7 @@ xaml_result balls_main_window_impl::show_stop(bool* pvalue) noexcept
     XAML_RETURN_IF_FAILED(m_map->get_ball_num(&ball_num));
     uint64_t score;
     XAML_RETURN_IF_FAILED(m_map->get_score(&score));
-    XAML_RETURN_IF_FAILED(xaml_string_new(sf::sprint(U("难度：{}\n球数：{}\n分数：{}"), difficulty, ball_num, score), &message));
+    XAML_RETURN_IF_FAILED(xaml_string_new(sf::sprint(U("难度：{}\n球数：{}\n分数：{}"), get_difficulty_text(difficulty), ball_num, score), &message));
     xaml_ptr<xaml_vector<xaml_msgbox_custom_button>> buttons;
     XAML_RETURN_IF_FAILED(xaml_vector_new(&buttons));
     ADD_CUSTOM_BUTTON(buttons, xaml_msgbox_result_yes, U("重新开始"));
@@ -566,28 +588,6 @@ xaml_result balls_main_window_impl::on_canvas_redraw(xaml_object* sender, xaml_d
         }
     }
     return XAML_S_OK;
-}
-
-static constexpr string_view simple_text = U("简单");
-static constexpr string_view normal_text = U("正常");
-static constexpr string_view hard_text = U("困难");
-static constexpr string_view compete_text = U("挑战");
-
-static constexpr string_view get_difficulty_text(balls_difficulty difficulty) noexcept
-{
-    switch (difficulty)
-    {
-    case balls_difficulty_simple:
-        return simple_text;
-    case balls_difficulty_normal:
-        return normal_text;
-    case balls_difficulty_hard:
-        return hard_text;
-    case balls_difficulty_compete:
-        return compete_text;
-    default:
-        return {};
-    }
 }
 
 xaml_result balls_main_window_impl::on_map_ball_score_changed(xaml_object*, balls_ball_score_changed_args args) noexcept
