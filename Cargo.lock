@@ -282,6 +282,7 @@ dependencies = [
  "once_cell",
  "os_pipe",
  "scoped-tls",
+ "slab",
  "smallvec",
  "socket2",
  "windows-sys 0.52.0",

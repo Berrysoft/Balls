@@ -4,42 +4,39 @@
 use std::{
     cell::RefCell,
     rc::{Rc, Weak},
+    time::Duration,
 };
 
 use balls::{BallType, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE, Special};
-use compio::runtime::spawn;
+use compio::{runtime::spawn, time::interval};
 use futures_util::FutureExt;
 use winio::{
     BrushPen, Canvas, Color, DrawingFontBuilder, HAlign, Point, Rect, Size, SolidColorBrush,
     VAlign, Window, block_on,
 };
 
-thread_local! {
-    static MAP: RefCell<Map> = RefCell::new(Map::default());
-}
-
 #[derive(Debug, Default)]
 struct State {
-    ticker: Option<MapTicker<'static>>,
+    map: Rc<RefCell<Map>>,
+    ticker: Option<MapTicker>,
     drect: Rect,
+    mouse: Point,
 }
 
 impl State {
     pub fn set_drect(&mut self, canvas: &Canvas) {
         let size = canvas.size().unwrap();
-        let drect = MAP.with_borrow(|map| {
-            let columns = map.column_len() as f64;
-            let rows = map.row_len() as f64;
-            let sidew = size.width / columns;
-            let sideh = size.height / rows;
-            let sidel = sidew.min(sideh);
-            let dw = sidel * columns - 1.0;
-            let dh = sidel * rows - 1.0;
-            let dx = (size.width - dw) / 2.0;
-            let dy = (size.height - dh) / 2.0;
-            Rect::new(Point::new(dx, dy), Size::new(dw, dh))
-        });
-        self.drect = drect;
+        let map = self.map.borrow();
+        let columns = map.column_len() as f64;
+        let rows = map.row_len() as f64;
+        let sidew = size.width / columns;
+        let sideh = size.height / rows;
+        let sidel = sidew.min(sideh);
+        let dw = sidel * columns - 1.0;
+        let dh = sidel * rows - 1.0;
+        let dx = (size.width - dw) / 2.0;
+        let dy = (size.height - dh) / 2.0;
+        self.drect = Rect::new(Point::new(dx, dy), Size::new(dw, dh));
     }
 
     pub fn com_point(&self, rp: Point) -> Point {
@@ -67,10 +64,12 @@ fn main() {
 
         let state = Rc::new(RefCell::new(State::default()));
 
-        MAP.with_borrow_mut(|m| {
+        {
+            let state = state.borrow();
+            let mut m = state.map.borrow_mut();
             m.init(Difficulty::Simple);
             m.reset();
-        });
+        }
 
         spawn(render(
             Rc::downgrade(&window),
@@ -78,9 +77,19 @@ fn main() {
             Rc::downgrade(&state),
         ))
         .detach();
+        spawn(tick(Rc::downgrade(&canvas), Rc::downgrade(&state))).detach();
         spawn(redraw(Rc::downgrade(&canvas), Rc::downgrade(&state))).detach();
         wait_close(window).await;
     })
+}
+
+fn difficulty_str(difficulty: Difficulty) -> &'static str {
+    match difficulty {
+        Difficulty::Simple => "简单",
+        Difficulty::Normal => "正常",
+        Difficulty::Hard => "困难",
+        Difficulty::Compete => "挑战",
+    }
 }
 
 async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
@@ -92,7 +101,28 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<
         canvas.set_size(csize + Size::new(1., 1.)).unwrap();
         canvas.set_loc(Point::zero()).unwrap();
         if let Some(state) = state.upgrade() {
-            state.borrow_mut().set_drect(&canvas);
+            let mut state = state.borrow_mut();
+            state.set_drect(&canvas);
+
+            let map = state.map.borrow();
+            let difficulty = map.difficulty();
+            let title = if let Some(ticker) = state.ticker.as_ref() {
+                format!(
+                    "二维弹球 - {} 球数：{} 剩余球数：{} 分数：{}",
+                    difficulty_str(difficulty),
+                    map.balls_num(),
+                    ticker.remain(),
+                    map.score()
+                )
+            } else {
+                format!(
+                    "二维弹球 - {} 球数：{} 分数：{}",
+                    difficulty_str(difficulty),
+                    map.balls_num(),
+                    map.score()
+                )
+            };
+            window.set_text(title).unwrap();
         }
         canvas.redraw().unwrap();
         futures_util::select! {
@@ -100,10 +130,20 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<
             _ = window.wait_move().fuse() => {}
             p = canvas.wait_mouse_move().fuse() => {
                 if let Some(state) = state.upgrade() {
-                    let state = state.borrow();
+                    let mut state = state.borrow_mut();
                     if state.ticker.is_none() {
                         let p = p.unwrap();
-                        MAP.with_borrow_mut(|map| map.update_sample(state.com_point(p)));
+                        state.mouse = p;
+                        let mut map = state.map.borrow_mut();
+                        map.update_sample(state.com_point(p));
+                    }
+                }
+            }
+            _ = canvas.wait_mouse_up().fuse() => {
+                if let Some(state) = state.upgrade() {
+                    let mut state = state.borrow_mut();
+                    if state.ticker.is_none() {
+                        state.ticker = Some(Map::start(state.map.clone(), state.com_point(state.mouse)));
                     }
                 }
             }
@@ -174,113 +214,133 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
                 .halign(HAlign::Center)
                 .valign(VAlign::Center)
                 .build();
-            MAP.with_borrow(|map| {
-                if state.ticker.is_none() {
-                    let sample_pos = map.sample();
-                    let brush = SolidColorBrush::new(RED_SAMPLE);
-                    ctx.fill_ellipse(brush, state.ball_rect(sample_pos))
+            let map = state.map.borrow();
+            if state.ticker.is_none() {
+                let sample_pos = map.sample();
+                let brush = SolidColorBrush::new(RED_SAMPLE);
+                ctx.fill_ellipse(brush, state.ball_rect(sample_pos))
+                    .unwrap();
+            }
+            let bball = if map.doubled_score() {
+                SolidColorBrush::new(YELLOW_CIRCLE)
+            } else {
+                SolidColorBrush::new(RED_BALL)
+            };
+            let start_pos = map.startp();
+            let end_shooting = state
+                .ticker
+                .as_ref()
+                .map(|ticker| ticker.is_end())
+                .unwrap_or_default();
+            if !end_shooting {
+                ctx.fill_ellipse(&bball, state.ball_rect(start_pos))
+                    .unwrap();
+            }
+            if let Some(ticker) = state.ticker.as_ref() {
+                if let Some(new_start) = ticker.new_startp() {
+                    ctx.fill_ellipse(&bball, state.ball_rect(new_start))
                         .unwrap();
                 }
-                let bball = if map.doubled_score() {
-                    SolidColorBrush::new(YELLOW_CIRCLE)
-                } else {
-                    SolidColorBrush::new(RED_BALL)
-                };
-                let start_pos = map.startp();
-                let end_shooting = state
-                    .ticker
-                    .as_ref()
-                    .map(|ticker| ticker.is_end())
-                    .unwrap_or_default();
-                if !end_shooting {
-                    ctx.fill_ellipse(&bball, state.ball_rect(start_pos))
-                        .unwrap();
+                for b in ticker.balls() {
+                    ctx.fill_ellipse(&bball, state.ball_rect(b.pos)).unwrap();
                 }
-                if let Some(ticker) = state.ticker.as_ref() {
-                    if let Some(new_start) = ticker.new_startp() {
-                        ctx.fill_ellipse(&bball, state.ball_rect(new_start))
-                            .unwrap();
-                    }
-                    for b in ticker.balls() {
-                        ctx.fill_ellipse(&bball, state.ball_rect(b.pos)).unwrap();
-                    }
-                }
-                let pborder = BrushPen::new(SolidColorBrush::new(GREEN_BORDER), 3.0);
-                for (y, row) in map.balls().iter().enumerate() {
-                    for (x, t) in row.iter().enumerate() {
-                        let cx = x as f64 * SIDE + SIDE / 2.0;
-                        let cy = y as f64 * SIDE + SIDE / 2.0;
-                        let real_c = Point::new(cx, cy) * extend;
-                        let center = real_c + state.drect.origin.to_vector();
-                        match t {
-                            BallType::None => {}
-                            BallType::Normal(score) => {
-                                let fillc = square_color(score.0);
-                                let btext =
-                                    SolidColorBrush::new(if fillc.g > 127 { BACK } else { FORE });
-                                let bfill = SolidColorBrush::new(fillc);
-                                let mut round_rect = Rect::new(
-                                    Point::new(x as f64 * SIDE + 5.0, y as f64 * SIDE + 5.0),
-                                    Size::new(SIDE - 11.0, SIDE - 11.0),
-                                );
-                                round_rect *= extend;
-                                round_rect.origin += drect.origin.to_vector();
-                                let radius = Size::new(10.0, 10.0) * extend;
-                                ctx.fill_round_rect(bfill, round_rect, radius).unwrap();
-                                ctx.draw_round_rect(&pborder, round_rect, radius).unwrap();
-                                ctx.draw_str(btext, font.clone(), center, score.0.to_string())
+            }
+            let pborder = BrushPen::new(SolidColorBrush::new(GREEN_BORDER), 3.0);
+            for (y, row) in map.balls().iter().enumerate() {
+                for (x, t) in row.iter().enumerate() {
+                    let cx = x as f64 * SIDE + SIDE / 2.0;
+                    let cy = y as f64 * SIDE + SIDE / 2.0;
+                    let real_c = Point::new(cx, cy) * extend;
+                    let center = real_c + state.drect.origin.to_vector();
+                    match t {
+                        BallType::None => {}
+                        BallType::Normal(score) => {
+                            let fillc = square_color(score.0);
+                            let btext =
+                                SolidColorBrush::new(if fillc.g > 127 { BACK } else { FORE });
+                            let bfill = SolidColorBrush::new(fillc);
+                            let mut round_rect = Rect::new(
+                                Point::new(x as f64 * SIDE + 5.0, y as f64 * SIDE + 5.0),
+                                Size::new(SIDE - 11.0, SIDE - 11.0),
+                            );
+                            round_rect *= extend;
+                            round_rect.origin += drect.origin.to_vector();
+                            let radius = Size::new(10.0, 10.0) * extend;
+                            ctx.fill_round_rect(bfill, round_rect, radius).unwrap();
+                            ctx.draw_round_rect(&pborder, round_rect, radius).unwrap();
+                            ctx.draw_str(btext, font.clone(), center, score.0.to_string())
+                                .unwrap();
+                        }
+                        BallType::Special(special) => {
+                            let bcircle = SolidColorBrush::new(special_color(*special));
+                            let r = NUM_SIZE * extend / 2.0;
+                            let circle_rect = Rect::new(
+                                Point::new(real_c.x - r, real_c.y - r) + drect.origin.to_vector(),
+                                Size::new(2.0 * r, 2.0 * r),
+                            );
+                            ctx.fill_ellipse(bcircle, circle_rect).unwrap();
+                            ctx.draw_ellipse(&pborder, circle_rect).unwrap();
+                            let bfore = SolidColorBrush::new(FORE);
+                            let pfore = BrushPen::new(&bfore, 3.0);
+                            match special {
+                                Special::New => {
+                                    let length = (NUM_SIZE - 20.0) * extend / 2.0;
+                                    ctx.draw_line(
+                                        &pfore,
+                                        Point::new(center.x, center.y - length),
+                                        Point::new(center.x, center.y + length),
+                                    )
                                     .unwrap();
-                            }
-                            BallType::Special(special) => {
-                                let bcircle = SolidColorBrush::new(special_color(*special));
-                                let r = NUM_SIZE * extend / 2.0;
-                                let circle_rect = Rect::new(
-                                    Point::new(real_c.x - r, real_c.y - r)
-                                        + drect.origin.to_vector(),
-                                    Size::new(2.0 * r, 2.0 * r),
-                                );
-                                ctx.fill_ellipse(bcircle, circle_rect).unwrap();
-                                ctx.draw_ellipse(&pborder, circle_rect).unwrap();
-                                let bfore = SolidColorBrush::new(FORE);
-                                let pfore = BrushPen::new(&bfore, 3.0);
-                                match special {
-                                    Special::New => {
-                                        let length = (NUM_SIZE - 20.0) * extend / 2.0;
-                                        ctx.draw_line(
-                                            &pfore,
-                                            Point::new(center.x, center.y - length),
-                                            Point::new(center.x, center.y + length),
-                                        )
-                                        .unwrap();
-                                        ctx.draw_line(
-                                            &pfore,
-                                            Point::new(center.x - length, center.y),
-                                            Point::new(center.x + length, center.y),
-                                        )
-                                        .unwrap();
-                                    }
-                                    Special::Delete => {
-                                        let length = (NUM_SIZE - 20.0) * extend / 2.0;
-                                        ctx.draw_line(
-                                            &pfore,
-                                            Point::new(center.x - length, center.y),
-                                            Point::new(center.x + length, center.y),
-                                        )
-                                        .unwrap();
-                                    }
-                                    Special::Random | Special::RandomOld => {
-                                        ctx.draw_str(&bfore, font.clone(), center, "?").unwrap();
-                                    }
-                                    Special::DoubleScore => {
-                                        ctx.draw_str(&bfore, font.clone(), center, "$").unwrap();
-                                    }
+                                    ctx.draw_line(
+                                        &pfore,
+                                        Point::new(center.x - length, center.y),
+                                        Point::new(center.x + length, center.y),
+                                    )
+                                    .unwrap();
+                                }
+                                Special::Delete => {
+                                    let length = (NUM_SIZE - 20.0) * extend / 2.0;
+                                    ctx.draw_line(
+                                        &pfore,
+                                        Point::new(center.x - length, center.y),
+                                        Point::new(center.x + length, center.y),
+                                    )
+                                    .unwrap();
+                                }
+                                Special::Random | Special::RandomOld => {
+                                    ctx.draw_str(&bfore, font.clone(), center, "?").unwrap();
+                                }
+                                Special::DoubleScore => {
+                                    ctx.draw_str(&bfore, font.clone(), center, "$").unwrap();
                                 }
                             }
                         }
                     }
                 }
-            });
+            }
         }
+    }
+}
+
+async fn tick(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
+    let mut interval = interval(Duration::from_micros(10));
+    while let Some(state) = state.upgrade()
+        && let Some(canvas) = canvas.upgrade()
+    {
+        interval.tick().await;
+
+        let mut state = state.borrow_mut();
+        if let Some(mut ticker) = state.ticker.take() {
+            if ticker.tick() {
+                state.ticker = Some(ticker);
+            } else {
+                drop(ticker);
+                let mut map = state.map.borrow_mut();
+                map.reset();
+            }
+        }
+
+        canvas.redraw().unwrap();
     }
 }
 

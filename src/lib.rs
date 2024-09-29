@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::{cell::RefCell, f64::consts::PI, rc::Rc};
 
 use bitflags::bitflags;
 use euclid::Angle;
@@ -20,7 +20,7 @@ pub const NUM_SIZE: f64 = 100.0;
 pub const RECORD_VERSION: i32 = 2;
 
 #[repr(i32)]
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum Difficulty {
     #[default]
     Simple,
@@ -123,6 +123,18 @@ impl Map {
         &self.map
     }
 
+    pub fn difficulty(&self) -> Difficulty {
+        self.difficulty
+    }
+
+    pub fn balls_num(&self) -> usize {
+        self.balls_num
+    }
+
+    pub fn score(&self) -> u64 {
+        self.score
+    }
+
     pub const fn column_len(&self) -> usize {
         COLUMNS
     }
@@ -156,20 +168,20 @@ impl Map {
 
     #[inline]
     fn is_side(&self, r: usize, c: usize) -> bool {
-        self.is_normal(c, r).unwrap_or(true)
+        self.is_normal(r, c).unwrap_or(true)
     }
 
     #[inline]
     fn is_pluge(&self, r: usize, c: usize) -> bool {
-        self.is_normal(c, r).unwrap_or(false)
+        self.is_normal(r, c).unwrap_or(false)
     }
 
     fn bounce_side(&self, c: usize, r: usize) -> BounceSide {
         let mut result = BounceSide::empty();
-        if self.is_side(r, c - 1) {
+        if self.is_side(r, c.wrapping_sub(1)) {
             result |= BounceSide::LEFT;
         }
-        if self.is_side(r - 1, c) {
+        if self.is_side(r.wrapping_sub(1), c) {
             result |= BounceSide::TOP;
         }
         if self.is_side(r, c + 1) {
@@ -178,13 +190,13 @@ impl Map {
         if self.is_side(r + 1, c) {
             result |= BounceSide::BOTTOM;
         }
-        if self.is_pluge(r - 1, c - 1) && !result.contains(BounceSide::LT) {
+        if self.is_pluge(r.wrapping_sub(1), c.wrapping_sub(1)) && !result.contains(BounceSide::LT) {
             result |= BounceSide::LT_A;
         }
-        if self.is_pluge(r - 1, c + 1) && !result.contains(BounceSide::RT) {
+        if self.is_pluge(r.wrapping_sub(1), c + 1) && !result.contains(BounceSide::RT) {
             result |= BounceSide::RT_A;
         }
-        if self.is_pluge(r + 1, c - 1) && !result.contains(BounceSide::LB) {
+        if self.is_pluge(r + 1, c.wrapping_sub(1)) && !result.contains(BounceSide::LB) {
             result |= BounceSide::LB_A;
         }
         if self.is_pluge(r + 1, c + 1) && !result.contains(BounceSide::RB) {
@@ -217,8 +229,8 @@ impl Map {
         let ts = r * SIDE;
         let bs = (r + 1.0) * SIDE;
 
-        let c = c as usize;
-        let r = r as usize;
+        let c = clip(c as usize, 0, COLUMNS - 1);
+        let r = clip(r as usize, 0, ROWS - 1);
 
         let bside = self.bounce_side(c, r);
 
@@ -266,13 +278,13 @@ impl Map {
 
         if bside.contains(BounceSide::LEFT) && nbside.contains(BounceSide::LEFT) {
             change_ball(&mut b.speed.x, &mut b.pos.x, ls, true);
-            self.hit(r, c - 1);
+            self.hit(r, c.wrapping_sub(1));
         } else if bside.contains(BounceSide::RIGHT) && nbside.contains(BounceSide::RIGHT) {
             change_ball(&mut b.speed.x, &mut b.pos.x, rs, false);
             self.hit(r, c + 1);
         } else if bside.contains(BounceSide::TOP) && nbside.contains(BounceSide::TOP) {
             change_ball(&mut b.speed.y, &mut b.pos.y, ts, true);
-            self.hit(r - 1, c);
+            self.hit(r.wrapping_sub(1), c);
         } else if bside.contains(BounceSide::BOTTOM)
             && b.pos.y + RADIUS >= CLIENT_HEIGHT
             && b.speed.y > 0.0
@@ -286,15 +298,15 @@ impl Map {
         if bside.contains(BounceSide::LT_A) && nbside.contains(BounceSide::LT) {
             let sc = Point::new(ls + RADIUS, ts + RADIUS);
             change_ball_arc(b, &sc, false);
-            self.hit(r - 1, c - 1);
+            self.hit(r.wrapping_sub(1), c.wrapping_sub(1));
         } else if bside.contains(BounceSide::RT_A) && nbside.contains(BounceSide::RT) {
             let sc = Point::new(rs - RADIUS, ts + RADIUS);
             change_ball_arc(b, &sc, true);
-            self.hit(r - 1, c + 1);
+            self.hit(r.wrapping_sub(1), c + 1);
         } else if bside.contains(BounceSide::LB_A) && nbside.contains(BounceSide::LB) {
             let sc = Point::new(ls + RADIUS, bs - RADIUS);
             change_ball_arc(b, &sc, true);
-            self.hit(r + 1, c - 1);
+            self.hit(r + 1, c.wrapping_sub(1));
         } else if bside.contains(BounceSide::RB_A) && nbside.contains(BounceSide::RB) {
             let sc = Point::new(rs - RADIUS, bs - RADIUS);
             change_ball_arc(b, &sc, false);
@@ -377,9 +389,12 @@ impl Map {
         true
     }
 
-    pub fn start(&mut self, p: Point) -> MapTicker {
-        self.startv = self.get_start(p, SPEED);
-        MapTicker::new(self)
+    pub fn start(this: Rc<RefCell<Self>>, p: Point) -> MapTicker {
+        {
+            let mut map = this.borrow_mut();
+            map.startv = map.get_start(p, SPEED);
+        }
+        MapTicker::new(this)
     }
 
     pub fn update_sample(&mut self, p: Point) {
@@ -446,8 +461,8 @@ fn change_ball_arc(b: &mut Ball, sc: &Point, minus: bool) {
 }
 
 #[derive(Debug)]
-pub struct MapTicker<'a> {
-    map: &'a mut Map,
+pub struct MapTicker {
+    map: Rc<RefCell<Map>>,
     balls: Vec<Ball>,
     remain: usize,
     stopped: usize,
@@ -455,15 +470,15 @@ pub struct MapTicker<'a> {
     new_start: Option<f64>,
 }
 
-impl<'a> MapTicker<'a> {
-    fn new(map: &'a mut Map) -> Self {
-        let remain = map.balls_num;
+impl MapTicker {
+    fn new(map: Rc<RefCell<Map>>) -> Self {
+        let remain = map.borrow().balls_num;
         Self {
             map,
             balls: vec![],
             remain,
             stopped: 0,
-            iloop: 0,
+            iloop: 3,
             new_start: None,
         }
     }
@@ -481,18 +496,22 @@ impl<'a> MapTicker<'a> {
         &self.balls
     }
 
+    pub fn remain(&self) -> usize {
+        self.remain
+    }
+
     pub fn tick(&mut self) -> bool {
+        let mut map = self.map.borrow_mut();
         self.iloop = (self.iloop + 1) % 4;
         if !self.is_end() && self.iloop == 0 {
             // Add a new ball
-            self.balls
-                .push(Ball::new(self.map.startp(), self.map.startv));
+            self.balls.push(Ball::new(map.startp(), map.startv));
             self.remain -= 1;
         }
         let mut i = 0;
         while i < self.balls.len() {
             let b = &mut self.balls[i];
-            if self.map.bounce(b) {
+            if map.bounce(b) {
                 self.stopped += 1;
                 if b.pos.y + RADIUS >= CLIENT_HEIGHT && self.new_start.is_none() {
                     let tp = b.pos - b.speed;
@@ -520,11 +539,12 @@ fn clip<T: PartialOrd>(v: T, min: T, max: T) -> T {
     }
 }
 
-impl<'a> Drop for MapTicker<'a> {
+impl Drop for MapTicker {
     fn drop(&mut self) {
+        let mut map = self.map.borrow_mut();
         if let Some(start) = self.new_start {
-            self.map.start = start;
+            map.start = start;
         }
-        self.map.doubled_score = false;
+        map.doubled_score = false;
     }
 }

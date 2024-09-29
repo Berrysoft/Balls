@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = { version = "2.6.0", features = ["std"] }
-compio = { version = "0.12.0", features = ["macros", "nightly"] }
+compio = { version = "0.12.0", features = ["macros", "nightly", "time"] }
 euclid = "0.22.11"
 futures-util = "0.3.30"
 rand = { version = "0.8.5", features = ["nightly"] }
