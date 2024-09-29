@@ -10,4 +10,4 @@ euclid = "0.22.11"
 futures-util = "0.3.30"
 rand = { version = "0.8.5", features = ["nightly"] }
 rand_distr = "0.4.3"
-winio = { version = "0.1.0", features = ["nightly"] }
+winio = { version = "0.1.1", features = ["nightly"] }

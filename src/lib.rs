@@ -12,15 +12,15 @@ use rand_distr::{
 };
 use winio::{Point, Vector};
 
-const COLUMNS: usize = 6;
-const ROWS: usize = 8;
-const RADIUS: f64 = 20.0;
-const SIDE: f64 = 200.0;
-const CLIENT_WIDTH: f64 = SIDE * COLUMNS as f64;
-const CLIENT_HEIGHT: f64 = SIDE * ROWS as f64;
-const SPEED: f64 = 50.0;
-const NUM_SIZE: f64 = 100.0;
-const RECORD_VERSION: i32 = 2;
+pub const COLUMNS: usize = 6;
+pub const ROWS: usize = 8;
+pub const RADIUS: f64 = 20.0;
+pub const SIDE: f64 = 200.0;
+pub const CLIENT_WIDTH: f64 = SIDE * COLUMNS as f64;
+pub const CLIENT_HEIGHT: f64 = SIDE * ROWS as f64;
+pub const SPEED: f64 = 50.0;
+pub const NUM_SIZE: f64 = 100.0;
+pub const RECORD_VERSION: i32 = 2;
 
 #[repr(i32)]
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -37,7 +37,7 @@ pub enum Difficulty {
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_layout_scalar_valid_range_end(0x7F_FF_FF_FF)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct Score(i32);
+pub struct Score(pub i32);
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum BallType {
@@ -67,8 +67,8 @@ impl BallType {
 
 #[derive(Debug, PartialEq)]
 pub struct Ball {
-    pos: Point,
-    speed: Vector,
+    pub pos: Point,
+    pub speed: Vector,
 }
 
 impl Ball {
@@ -119,6 +119,10 @@ impl Map {
         self.score = 0;
     }
 
+    pub fn balls(&self) -> &[[BallType; COLUMNS]; ROWS] {
+        &self.map
+    }
+
     pub const fn column_len(&self) -> usize {
         COLUMNS
     }
@@ -127,8 +131,16 @@ impl Map {
         ROWS
     }
 
+    pub fn sample(&self) -> Point {
+        self.sample
+    }
+
+    pub fn doubled_score(&self) -> bool {
+        self.doubled_score
+    }
+
     #[inline]
-    fn startp(&self) -> Point {
+    pub fn startp(&self) -> Point {
         Point::new(self.start, CLIENT_HEIGHT - RADIUS)
     }
 
@@ -371,7 +383,7 @@ impl Map {
         MapTicker::new(self)
     }
 
-    pub fn sample(&mut self, p: Point) {
+    pub fn update_sample(&mut self, p: Point) {
         let v = self.get_start(p, 0.5);
         let mut tp = self.startp();
         let mut c1;
@@ -387,11 +399,11 @@ impl Map {
                 && tp.y >= RADIUS
                 && self
                     .get_map(r, c1)
-                    .map(|b| b.is_special())
+                    .map(|b| !b.is_normal())
                     .unwrap_or_default()
                 && self
                     .get_map(r, c2)
-                    .map(|b| b.is_special())
+                    .map(|b| !b.is_normal())
                     .unwrap_or_default())
             {
                 break;
@@ -457,11 +469,20 @@ impl<'a> MapTicker<'a> {
         }
     }
 
-    fn is_end(&self) -> bool {
+    pub fn new_startp(&self) -> Option<Point> {
+        self.new_start
+            .map(|x| Point::new(x, CLIENT_HEIGHT - RADIUS))
+    }
+
+    pub fn is_end(&self) -> bool {
         self.remain == 0
     }
 
-    pub fn tick(&mut self) -> Option<&[Ball]> {
+    pub fn balls(&self) -> &[Ball] {
+        &self.balls
+    }
+
+    pub fn tick(&mut self) -> bool {
         self.iloop = (self.iloop + 1) % 4;
         if !self.is_end() && self.iloop == 0 {
             // Add a new ball
@@ -486,11 +507,7 @@ impl<'a> MapTicker<'a> {
                 i += 1;
             }
         }
-        if self.balls.is_empty() {
-            None
-        } else {
-            Some(&self.balls)
-        }
+        !self.balls.is_empty()
     }
 }
 

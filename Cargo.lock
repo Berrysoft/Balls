@@ -1694,9 +1694,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winio"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3b1576e47732278f8633726ec9d82c00072b243ba55976c744c3ed3af0cd194"
+checksum = "0df50a1ff09cf8fbe7bf021e8ddb917db892e8ec1f32f4d3379fda97731b7255"
 dependencies = [
  "block2",
  "cfg-if",
@@ -1708,6 +1708,7 @@ dependencies = [
  "euclid",
  "foreign-types-shared",
  "futures-channel",
+ "futures-util",
  "gtk4",
  "objc2",
  "objc2-app-kit",
