@@ -1,6 +1,3 @@
-#![feature(rustc_attrs)]
-#![allow(internal_features)]
-
 use std::f64::consts::PI;
 
 use bitflags::bitflags;
@@ -34,21 +31,24 @@ pub enum Difficulty {
 
 // The score is always positive.
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_layout_scalar_valid_range_end(0x7F_FF_FF_FF)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct Score(pub i32);
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Special {
+    New,
+    Delete,
+    Random,
+    RandomOld,
+    DoubleScore,
+}
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum BallType {
     #[default]
     None,
     Normal(Score),
-    New,
-    Delete,
-    Random,
-    RandomOld,
-    DoubleScore,
+    Special(Special),
 }
 
 impl BallType {
@@ -200,7 +200,7 @@ impl Map {
                     if s.0 == 1 {
                         *b = BallType::None;
                     } else {
-                        unsafe { s.0 -= 1 };
+                        s.0 -= 1;
                     }
                 }
                 _ => unreachable!(),
@@ -225,20 +225,20 @@ impl Map {
         let current = &mut self.map[r][c];
         match current {
             BallType::None | BallType::Normal(_) => {}
-            _ => {
+            BallType::Special(special) => {
                 let center = Point::new(ls + SIDE / 2.0, ts + SIDE / 2.0);
                 let dis = (b.pos - center).length();
                 if dis <= NUM_SIZE / 2.0 + RADIUS + 10.0 {
-                    match current {
-                        BallType::New => {
+                    match special {
+                        Special::New => {
                             self.balls_num += 1;
                             *current = BallType::None;
                         }
-                        BallType::Delete => {
+                        Special::Delete => {
                             *current = BallType::None;
                             return true;
                         }
-                        BallType::Random | BallType::RandomOld => {
+                        Special::Random | Special::RandomOld => {
                             let thetad = Normal::new(
                                 if b.speed.angle_from_x_axis().radians + b.speed.x < 0.0 {
                                     0.0
@@ -250,13 +250,12 @@ impl Map {
                             .unwrap();
                             let theta = thetad.sample(&mut self.rng);
                             b.speed = Vector::from_angle_and_length(Angle::radians(theta), SPEED);
-                            *current = BallType::RandomOld;
+                            *current = BallType::Special(Special::RandomOld);
                         }
-                        BallType::DoubleScore => {
+                        Special::DoubleScore => {
                             self.doubled_score = true;
                             *current = BallType::None;
                         }
-                        _ => {}
                     }
                 }
             }
@@ -326,7 +325,7 @@ impl Map {
             for c in 0..COLUMNS {
                 let t = &self.map[r - 1][c];
                 match t {
-                    BallType::RandomOld => {
+                    BallType::Special(Special::RandomOld) => {
                         self.map[r][c] = BallType::None;
                     }
                     _ => self.map[r][c] = *t,
@@ -350,7 +349,7 @@ impl Map {
             if uni.sample(&mut self.rng) < 0.6 {
                 let v = distr.sample(&mut self.rng).round() as i32;
                 if v > 0 {
-                    self.map[0][c] = BallType::Normal(unsafe { Score(v) });
+                    self.map[0][c] = BallType::Normal(Score(v));
                     continue;
                 }
             }
@@ -359,21 +358,21 @@ impl Map {
         let idist: UniformInt<usize> = UniformInt::new(0, COLUMNS);
         if uni.sample(&mut self.rng) < 0.5 {
             let c = idist.sample(&mut self.rng);
-            self.map[0][c] = BallType::Random;
+            self.map[0][c] = BallType::Special(Special::Random);
         }
         if uni.sample(&mut self.rng) < 0.2 {
             let c = idist.sample(&mut self.rng);
-            self.map[0][c] = BallType::Delete;
+            self.map[0][c] = BallType::Special(Special::Delete);
         }
         if uni.sample(&mut self.rng) < 0.2 {
             let c = idist.sample(&mut self.rng);
-            self.map[0][c] = BallType::DoubleScore;
+            self.map[0][c] = BallType::Special(Special::DoubleScore);
         }
         if self.balls_num < (i32::MAX / 2) as usize
             && (self.difficulty == Difficulty::Compete || uni.sample(&mut self.rng) < 0.5)
         {
             let c = idist.sample(&mut self.rng);
-            self.map[0][c] = BallType::New;
+            self.map[0][c] = BallType::Special(Special::New);
         }
         true
     }

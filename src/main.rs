@@ -6,7 +6,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use balls::{BallType, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE};
+use balls::{BallType, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE, Special};
 use compio::runtime::spawn;
 use futures_util::FutureExt;
 use winio::{
@@ -133,15 +133,27 @@ fn square_color(t: i32) -> Color {
     }
 }
 
-async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
-    const BLACK: Color = Color::new(0, 0, 0, 255);
-    const BACK: Color = Color::new(31, 31, 31, 255);
-    const FORE: Color = Color::new(223, 223, 223, 255);
-    const RED_SAMPLE: Color = Color::new(231, 72, 86, 255);
-    const RED_BALL: Color = Color::new(197, 15, 31, 255);
-    const GREEN_BORDER: Color = Color::new(22, 198, 12, 255);
-    const YELLOW_CIRCLE: Color = Color::new(193, 156, 0, 255);
+const BLACK: Color = Color::new(0, 0, 0, 255);
+const BACK: Color = Color::new(31, 31, 31, 255);
+const FORE: Color = Color::new(223, 223, 223, 255);
+const RED_SAMPLE: Color = Color::new(231, 72, 86, 255);
+const RED_BALL: Color = Color::new(197, 15, 31, 255);
+const GREEN_BORDER: Color = Color::new(22, 198, 12, 255);
+const BLUE_CIRCLE: Color = Color::new(0, 55, 218, 255);
+const YELLOW_CIRCLE: Color = Color::new(193, 156, 0, 255);
+const PURPLE_CIRCLE: Color = Color::new(136, 23, 152, 255);
 
+fn special_color(s: Special) -> Color {
+    match s {
+        Special::New => BLUE_CIRCLE,
+        Special::Delete => RED_BALL,
+        Special::Random => PURPLE_CIRCLE,
+        Special::RandomOld => RED_SAMPLE,
+        Special::DoubleScore => YELLOW_CIRCLE,
+    }
+}
+
+async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
     while let Some(canvas) = canvas.upgrade() {
         let ctx = canvas.wait_redraw().await.unwrap();
 
@@ -219,7 +231,51 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
                                 ctx.draw_str(btext, font.clone(), center, score.0.to_string())
                                     .unwrap();
                             }
-                            _ => {}
+                            BallType::Special(special) => {
+                                let bcircle = SolidColorBrush::new(special_color(*special));
+                                let r = NUM_SIZE * extend / 2.0;
+                                let circle_rect = Rect::new(
+                                    Point::new(real_c.x - r, real_c.y - r)
+                                        + drect.origin.to_vector(),
+                                    Size::new(2.0 * r, 2.0 * r),
+                                );
+                                ctx.fill_ellipse(bcircle, circle_rect).unwrap();
+                                ctx.draw_ellipse(&pborder, circle_rect).unwrap();
+                                let bfore = SolidColorBrush::new(FORE);
+                                let pfore = BrushPen::new(&bfore, 3.0);
+                                match special {
+                                    Special::New => {
+                                        let length = (NUM_SIZE - 20.0) * extend / 2.0;
+                                        ctx.draw_line(
+                                            &pfore,
+                                            Point::new(center.x, center.y - length),
+                                            Point::new(center.x, center.y + length),
+                                        )
+                                        .unwrap();
+                                        ctx.draw_line(
+                                            &pfore,
+                                            Point::new(center.x - length, center.y),
+                                            Point::new(center.x + length, center.y),
+                                        )
+                                        .unwrap();
+                                    }
+                                    Special::Delete => {
+                                        let length = (NUM_SIZE - 20.0) * extend / 2.0;
+                                        ctx.draw_line(
+                                            &pfore,
+                                            Point::new(center.x - length, center.y),
+                                            Point::new(center.x + length, center.y),
+                                        )
+                                        .unwrap();
+                                    }
+                                    Special::Random | Special::RandomOld => {
+                                        ctx.draw_str(&bfore, font.clone(), center, "?").unwrap();
+                                    }
+                                    Special::DoubleScore => {
+                                        ctx.draw_str(&bfore, font.clone(), center, "$").unwrap();
+                                    }
+                                }
+                            }
                         }
                     }
                 }
