@@ -7,7 +7,10 @@ use std::{
     time::Duration,
 };
 
-use balls::{BallType, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE, Special};
+use balls::{
+    BallType, CLIENT_HEIGHT, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE,
+    Special,
+};
 use compio::{fs::File, io::AsyncWriteAtExt, runtime::spawn, time::interval};
 use futures_util::{FutureExt, lock::Mutex};
 use winio::{
@@ -122,9 +125,9 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<St
             p = canvas.wait_mouse_move().fuse() => {
                 if let Some(state) = state.upgrade() {
                     let mut state = state.lock().await;
+                    let p = p.unwrap();
+                    state.mouse = p;
                     if state.ticker.is_none() {
-                        let p = p.unwrap();
-                        state.mouse = p;
                         let mut map = state.map.borrow_mut();
                         map.update_sample(state.com_point(p));
                     }
@@ -218,9 +221,15 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<Mutex<State>>) {
             let map = state.map.borrow();
             if state.ticker.is_none() {
                 let sample_pos = map.sample();
-                let brush = SolidColorBrush::new(RED_SAMPLE);
-                ctx.fill_ellipse(brush, state.ball_rect(sample_pos))
-                    .unwrap();
+                if sample_pos.x >= RADIUS
+                    && sample_pos.x <= CLIENT_WIDTH - RADIUS
+                    && sample_pos.y >= RADIUS
+                    && sample_pos.y <= CLIENT_HEIGHT - RADIUS
+                {
+                    let brush = SolidColorBrush::new(RED_SAMPLE);
+                    ctx.fill_ellipse(brush, state.ball_rect(sample_pos))
+                        .unwrap();
+                }
             }
             let bball = if map.doubled_score() {
                 SolidColorBrush::new(YELLOW_CIRCLE)

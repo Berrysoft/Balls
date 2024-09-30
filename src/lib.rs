@@ -261,8 +261,8 @@ impl Map {
     }
 
     fn bounce(&mut self, b: &mut Ball) -> bool {
-        let c = (b.pos.x.round() / SIDE).floor();
-        let r = (b.pos.y.round() / SIDE).floor();
+        let c = (b.pos.x / SIDE).floor();
+        let r = (b.pos.y / SIDE).floor();
         let ls = c * SIDE;
         let rs = (c + 1.0) * SIDE;
         let ts = r * SIDE;
@@ -444,9 +444,9 @@ impl Map {
         let mut r;
         loop {
             tp += v;
-            c1 = ((tp.x - RADIUS).round() / SIDE) as usize;
-            c2 = ((tp.x + RADIUS).round() / SIDE) as usize;
-            r = ((tp.y - RADIUS).round() / SIDE) as usize;
+            c1 = ((tp.x - RADIUS) / SIDE) as usize;
+            c2 = ((tp.x + RADIUS) / SIDE) as usize;
+            r = ((tp.y - RADIUS) / SIDE) as usize;
             if !(tp.x >= RADIUS
                 && tp.x <= CLIENT_WIDTH - RADIUS
                 && tp.y >= RADIUS
@@ -587,8 +587,8 @@ impl Map {
 
 fn get_side(pos: Point, ls: f64, ts: f64, rs: f64, bs: f64) -> BounceSide {
     let mut result = BounceSide::empty();
-    let x = pos.x.round();
-    let y = pos.y.round();
+    let x = pos.x;
+    let y = pos.y;
     if x - RADIUS <= ls {
         result |= BounceSide::LEFT;
     }
