@@ -1,0 +1,38 @@
+#pragma code_page(65001)
+
+#include <winresrc.h>
+
+#define IDI_ICON1 101
+
+IDI_ICON1 ICON "logo.ico"
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION 3, 0, 0
+    PRODUCTVERSION 3, 0, 0
+    FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+    FILEFLAGS VS_FF_DEBUG
+#else
+    FILEFLAGS 0x0L
+#endif
+    FILEOS VOS_NT_WINDOWS32
+    FILETYPE VFT_APP
+    FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404B0"
+        BEGIN
+            VALUE "CompanyName", "Berrysoft"
+            VALUE "FileDescription", "二维弹球"
+            VALUE "FileVersion", "3.0.0"
+            VALUE "LegalCopyright", "Copyright (c) 2018-2024 Berrysoft"
+            VALUE "ProductName", "Balls"
+            VALUE "ProductVersion", "3.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0804, 1200
+    END
+END
