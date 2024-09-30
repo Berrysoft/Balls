@@ -3,6 +3,7 @@
 
 use std::{
     cell::RefCell,
+    path::Path,
     rc::{Rc, Weak},
     time::Duration,
 };
@@ -11,21 +12,47 @@ use balls::{
     BallType, CLIENT_HEIGHT, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE,
     Special,
 };
-use compio::{fs::File, io::AsyncWriteAtExt, runtime::spawn, time::interval};
+use compio::{
+    fs::File,
+    io::{AsyncReadAtExt, AsyncWriteAtExt},
+    runtime::spawn,
+    time::interval,
+};
+use futures_channel::oneshot;
 use futures_util::{FutureExt, lock::Mutex};
 use winio::{
-    BrushPen, Canvas, Color, DrawingFontBuilder, FileBox, HAlign, MessageBox, MessageBoxButton,
-    MessageBoxResponse, MessageBoxStyle, MouseButton, Point, Rect, Size, SolidColorBrush, VAlign,
-    Window, block_on,
+    BrushPen, Canvas, Color, CustomButton, DrawingFontBuilder, FileBox, HAlign, MessageBox,
+    MessageBoxButton, MessageBoxResponse, MessageBoxStyle, MouseButton, Point, Rect, Size,
+    SolidColorBrush, VAlign, Window, block_on,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct State {
     map: Rc<RefCell<Map>>,
     ticker: Option<MapTicker>,
     drect: Rect,
     mouse: Point,
     timer_running: bool,
+    close_tx: Option<oneshot::Sender<()>>,
+}
+
+impl State {
+    pub fn new(close_tx: oneshot::Sender<()>) -> Self {
+        Self {
+            map: Rc::new(RefCell::new(Map::default())),
+            ticker: None,
+            drect: Rect::zero(),
+            mouse: Point::zero(),
+            timer_running: true,
+            close_tx: Some(close_tx),
+        }
+    }
+
+    pub fn send_close(&mut self) {
+        if let Some(tx) = self.close_tx.take() {
+            tx.send(()).ok();
+        }
+    }
 }
 
 impl State {
@@ -62,6 +89,16 @@ impl State {
 
 fn main() {
     block_on(async {
+        let (close_tx, close_rx) = oneshot::channel();
+        let state = Rc::new(Mutex::new(State::new(close_tx)));
+
+        {
+            let mut state = state.lock().await;
+            if !init_balls(None, &mut state).await {
+                return;
+            }
+        }
+
         let window = Window::new().unwrap();
         window.set_size(Size::new(800.0, 600.0)).unwrap();
 
@@ -69,16 +106,6 @@ fn main() {
         window.set_icon_by_id(101).unwrap();
 
         let canvas = Canvas::new(&window).unwrap();
-
-        let state = Rc::new(Mutex::new(State::default()));
-
-        {
-            let mut state = state.lock().await;
-            state.timer_running = true;
-            let mut m = state.map.borrow_mut();
-            m.init(Difficulty::Simple);
-            m.reset();
-        }
 
         spawn(render(
             Rc::downgrade(&window),
@@ -93,7 +120,7 @@ fn main() {
         ))
         .detach();
         spawn(redraw(Rc::downgrade(&canvas), Rc::downgrade(&state))).detach();
-        wait_close(window, Rc::downgrade(&state)).await;
+        wait_close(window, Rc::downgrade(&state), close_rx).await;
     })
 }
 
@@ -332,6 +359,7 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<Mutex<State>>) {
     }
 }
 
+#[allow(clippy::await_holding_refcell_ref)] // false positive
 async fn tick(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<State>>) {
     let mut interval = interval(Duration::from_millis(10));
     while let Some(window) = window.upgrade()
@@ -348,8 +376,21 @@ async fn tick(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<Stat
                 } else {
                     drop(ticker);
                     let mut map = state.map.borrow_mut();
-                    map.reset();
-                    map.update_sample(state.com_point(state.mouse));
+                    if map.reset() {
+                        map.update_sample(state.com_point(state.mouse));
+                    } else {
+                        let difficulty = map.difficulty();
+                        let balls_num = map.balls_num();
+                        let score = map.score();
+                        drop(map); // avoid to hold it across await
+                        let cont = show_stop(&window, difficulty, balls_num, score).await;
+                        if !cont {
+                            state.send_close();
+                        }
+                        if !init_balls(Some(&window), &mut state).await {
+                            state.send_close();
+                        }
+                    }
                 }
             }
 
@@ -378,9 +419,18 @@ async fn tick(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<Stat
     }
 }
 
-async fn wait_close(window: Rc<Window>, state: Weak<Mutex<State>>) {
+async fn wait_close(
+    window: Rc<Window>,
+    state: Weak<Mutex<State>>,
+    mut close_rx: oneshot::Receiver<()>,
+) {
     loop {
-        window.wait_close().await;
+        futures_util::select! {
+            _ = window.wait_close().fuse() => {},
+            _ = close_rx => {
+                break;
+            }
+        }
 
         let running = if let Some(state) = state.upgrade() {
             let mut state = state.lock().await;
@@ -399,6 +449,64 @@ async fn wait_close(window: Rc<Window>, state: Weak<Mutex<State>>) {
     }
 }
 
+async fn init_balls(window: Option<&Window>, state: &mut State) -> bool {
+    const SIMPLE: u16 = 100;
+    const NORMAL: u16 = 101;
+    const HARD: u16 = 102;
+    const COMPETE: u16 = 103;
+    const OPENR: u16 = 104;
+    let res = MessageBox::new()
+        .title("二维弹球")
+        .instruction("请选择难度")
+        .message(
+            r#"所有难度的区别仅为方块上数目大小的概率分布。
+加号增加球的数目；问号随机更改球的速度方向；
+减号使当前球消失；美元符号使本轮得分加倍。
+按右键暂停。请不要过于依赖示例球。"#,
+        )
+        .custom_button(CustomButton::new(SIMPLE, "简单"))
+        .custom_button(CustomButton::new(NORMAL, "正常"))
+        .custom_button(CustomButton::new(HARD, "困难"))
+        .custom_button(CustomButton::new(COMPETE, "挑战"))
+        .custom_button(CustomButton::new(OPENR, "打开存档"))
+        .style(MessageBoxStyle::Info)
+        .show(window)
+        .await
+        .unwrap();
+    let difficulty = match res {
+        MessageBoxResponse::Custom(OPENR) => return show_open(window, state).await,
+        MessageBoxResponse::Custom(SIMPLE) => Difficulty::Simple,
+        MessageBoxResponse::Custom(NORMAL) => Difficulty::Normal,
+        MessageBoxResponse::Custom(HARD) => Difficulty::Hard,
+        MessageBoxResponse::Custom(COMPETE) => Difficulty::Compete,
+        _ => return false,
+    };
+    let mut map = state.map.borrow_mut();
+    map.init(difficulty);
+    map.reset()
+}
+
+async fn show_stop(window: &Window, difficulty: Difficulty, balls_num: usize, score: u64) -> bool {
+    const YES: u16 = 100;
+    const NO: u16 = 101;
+    let res = MessageBox::new()
+        .title("二维弹球")
+        .instruction("游戏结束")
+        .message(format!(
+            "难度：{}\n球数：{}\n分数：{}",
+            difficulty_str(difficulty),
+            balls_num,
+            score,
+        ))
+        .custom_button(CustomButton::new(YES, "重新开始"))
+        .custom_button(CustomButton::new(NO, "关闭"))
+        .style(MessageBoxStyle::Info)
+        .show(Some(window))
+        .await
+        .unwrap();
+    res == MessageBoxResponse::Custom(YES)
+}
+
 async fn show_close(window: &Window, state: Weak<Mutex<State>>) -> bool {
     let res = MessageBox::new()
         .title("二维弹球")
@@ -412,6 +520,42 @@ async fn show_close(window: &Window, state: Weak<Mutex<State>>) -> bool {
         MessageBoxResponse::Yes => !show_save(window, state).await,
         MessageBoxResponse::Cancel => true,
         _ => false,
+    }
+}
+
+async fn open_record(window: Option<&Window>, path: &Path, state: &mut State) -> bool {
+    let file = File::open(path).await.unwrap();
+    let (_, buffer) = file.read_to_end_at(vec![], 0).await.unwrap();
+    if let Ok((map, ticker)) = Map::from_bytes(&buffer) {
+        map.borrow_mut().update_sample(state.com_point(state.mouse));
+        state.map = map;
+        state.timer_running = ticker.is_none();
+        state.ticker = ticker;
+        true
+    } else {
+        MessageBox::new()
+            .title("二维弹球")
+            .message("存档是由本游戏的不同版本创建的，无法打开")
+            .buttons(MessageBoxButton::Ok)
+            .style(MessageBoxStyle::Error)
+            .show(window)
+            .await
+            .unwrap();
+        false
+    }
+}
+
+async fn show_open(window: Option<&Window>, state: &mut State) -> bool {
+    let filename = FileBox::new()
+        .add_filter(("存档文件", "*.balls"))
+        .add_filter(("所有文件", "*.*"))
+        .open(window)
+        .await
+        .unwrap();
+    if let Some(filename) = filename {
+        open_record(window, &filename, state).await
+    } else {
+        false
     }
 }
 

@@ -37,6 +37,7 @@ dependencies = [
  "compio",
  "embed-resource",
  "euclid",
+ "futures-channel",
  "futures-util",
  "paste",
  "rand",
@@ -1706,9 +1707,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winio"
-version = "0.1.3"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1e6f2d0af5c0f601c81e135146026407fba6491a66970f533357b870bfbe2e1"
+checksum = "6ad56500ca372810061feeab9402a425066b72bcdd821e73665776bdf1056577"
 dependencies = [
  "block2",
  "cfg-if",
