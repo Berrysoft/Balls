@@ -89,21 +89,28 @@ impl State {
 
 fn main() {
     block_on(async {
+        let window = Window::new().unwrap();
+        window.set_size(Size::new(450.0, 600.0)).unwrap();
+
+        #[cfg(windows)]
+        window.set_icon_by_id(101).unwrap();
+
         let (close_tx, close_rx) = oneshot::channel();
         let state = Rc::new(Mutex::new(State::new(close_tx)));
 
         {
             let mut state = state.lock().await;
-            if !init_balls(None, &mut state).await {
+
+            if let Some(path) = std::env::args_os().nth(1)
+                && compio::fs::metadata(&path).await.is_ok()
+            {
+                if !open_record(&window, &path, &mut state).await {
+                    return;
+                }
+            } else if !init_balls(&window, &mut state).await {
                 return;
             }
         }
-
-        let window = Window::new().unwrap();
-        window.set_size(Size::new(800.0, 600.0)).unwrap();
-
-        #[cfg(windows)]
-        window.set_icon_by_id(101).unwrap();
 
         let canvas = Canvas::new(&window).unwrap();
 
@@ -387,7 +394,7 @@ async fn tick(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<Stat
                         if !cont {
                             state.send_close();
                         }
-                        if !init_balls(Some(&window), &mut state).await {
+                        if !init_balls(&window, &mut state).await {
                             state.send_close();
                         }
                     }
@@ -449,7 +456,7 @@ async fn wait_close(
     }
 }
 
-async fn init_balls(window: Option<&Window>, state: &mut State) -> bool {
+async fn init_balls(window: &Window, state: &mut State) -> bool {
     const SIMPLE: u16 = 100;
     const NORMAL: u16 = 101;
     const HARD: u16 = 102;
@@ -470,7 +477,7 @@ async fn init_balls(window: Option<&Window>, state: &mut State) -> bool {
         .custom_button(CustomButton::new(COMPETE, "挑战"))
         .custom_button(CustomButton::new(OPENR, "打开存档"))
         .style(MessageBoxStyle::Info)
-        .show(window)
+        .show(Some(window))
         .await
         .unwrap();
     let difficulty = match res {
@@ -523,7 +530,7 @@ async fn show_close(window: &Window, state: Weak<Mutex<State>>) -> bool {
     }
 }
 
-async fn open_record(window: Option<&Window>, path: &Path, state: &mut State) -> bool {
+async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> bool {
     let file = File::open(path).await.unwrap();
     let (_, buffer) = file.read_to_end_at(vec![], 0).await.unwrap();
     if let Ok((map, ticker)) = Map::from_bytes(&buffer) {
@@ -538,18 +545,18 @@ async fn open_record(window: Option<&Window>, path: &Path, state: &mut State) ->
             .message("存档是由本游戏的不同版本创建的，无法打开")
             .buttons(MessageBoxButton::Ok)
             .style(MessageBoxStyle::Error)
-            .show(window)
+            .show(Some(window))
             .await
             .unwrap();
         false
     }
 }
 
-async fn show_open(window: Option<&Window>, state: &mut State) -> bool {
+async fn show_open(window: &Window, state: &mut State) -> bool {
     let filename = FileBox::new()
         .add_filter(("存档文件", "*.balls"))
         .add_filter(("所有文件", "*.*"))
-        .open(window)
+        .open(Some(window))
         .await
         .unwrap();
     if let Some(filename) = filename {
