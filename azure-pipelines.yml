@@ -2,113 +2,70 @@ trigger:
 - master
 
 jobs:
-- job: 'Build'
+- job: Build_Windows
   strategy:
     matrix:
-      windows:
-        imageName: 'windows-latest'
-        plat: 'win'
-        rid: 'win'
-        def: '-DBUILD_WINDOWS=on'
-        arch: x64
-      windows_x86:
-        imageName: 'windows-latest'
-        plat: 'win'
-        rid: 'win'
-        def: '-DBUILD_WINDOWS=on'
-        arch: x86
-      linux_gtk:
-        imageName: 'ubuntu-20.04'
-        plat: 'linux'
-        rid: 'linux'
-        def: '-DBUILD_GTK3=on'
-      linux_qt:
-        imageName: 'ubuntu-20.04'
-        plat: 'linux'
-        rid: 'linux-qt'
-        def: '-DBUILD_QT5=on'
-      mac:
-        imageName: 'macos-latest'
-        plat: 'mac'
-        rid: 'mac'
-        def: '-DBUILD_COCOA=on'
+      x64:
+        target: 'x86_64-pc-windows-msvc'
+        publishName: 'balls.win.x86_64'
+      x86:
+        target: 'i686-pc-windows-msvc'
+        publishName: 'balls.win.i686'
+      arm64:
+        target: 'aarch64-pc-windows-msvc'
+        publishName: 'balls.win.aarch64'
   pool:
-    vmImage: $(imageName)
-
-  variables:
-    configCmdline: -DBUILD_SHARED_LIBS=off
-    macLLVMPath: /usr/local/opt/llvm/bin
-
+    vmImage: windows-latest
+  
   steps:
   - script: |
-      git submodule init
-      git submodule update --init --recursive
-    displayName: 'Init git submodule'
+      rustup toolchain install nightly
+      rustup +nightly target add $(target)
+      cargo +nightly build --release --target $(target)
+    displayName: "Build"
 
-  - script: |
-      vcpkg install wil:$(arch)-windows
-    displayName: 'Install wil'
-    condition: eq(variables.rid, 'win')
+  - pwsh: |
+      cd target/$(target)/release
+      cp balls.exe $(Build.BinariesDirectory)/
+      cp balls.pdb $(Build.BinariesDirectory)/
+    displayName: 'Copy Binaries'
 
-  - script: |
-      sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa
-      sudo add-apt-repository ppa:mhier/libboost-latest
-      sudo apt-get install gcc-10 g++-10 ninja-build libboost1.74-dev
-      sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
-    displayName: 'Install ninja & boost & gcc'
-    condition: eq(variables.plat, 'linux')
-
-  - script: |
-      sudo apt-get install libgtk-3-dev
-    displayName: 'Install gtk'
-    condition: eq(variables.rid, 'linux')
-
-  - script: |
-      sudo apt-get install qtbase5-dev
-    displayName: 'Install qt5'
-    condition: eq(variables.rid, 'linux-qt')
-
-  - script: |
-      brew install ninja boost llvm
-    displayName: 'Install ninja & boost & llvm'
-    condition: eq(variables.plat, 'mac')
-
-  - script: |
-      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" $(arch)
-      mkdir build & cd build
-      cmake .. -GNinja $(def) -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(Build.ArtifactStagingDirectory)/$(rid)-$(arch) -DVCPKG_TARGET_TRIPLET=$(arch)-windows -DCMAKE_TOOLCHAIN_FILE=$(VCPKG_INSTALLATION_ROOT)/scripts/buildsystems/vcpkg.cmake $(configCmdline)
-    displayName: 'Configure all projects'
-    condition: eq(variables.rid, 'win')
-    env:
-      BOOST_ROOT: $(BOOST_ROOT_1_72_0)
-
-  - task: CMake@1
-    displayName: 'Configure all projects'
-    condition: eq(variables.plat, 'linux')
+  - task: ArchiveFiles@2
     inputs:
-      cmakeArgs: .. $(def) -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(Build.ArtifactStagingDirectory)/$(rid) $(configCmdline)
-
-  - task: CMake@1
-    displayName: 'Configure all projects'
-    condition: eq(variables.plat, 'mac')
-    inputs:
-      cmakeArgs: .. $(def) -GNinja -DCMAKE_C_COMPILER=$(macLLVMPath)/clang -DCMAKE_CXX_COMPILER=$(macLLVMPath)/clang++ -DCMAKE_OBJC_COMPILER=$(macLLVMPath)/clang -DCMAKE_OBJCXX_COMPILER=$(macLLVMPath)/clang++ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(Build.ArtifactStagingDirectory)/$(rid) $(configCmdline)
-
-  - script: |
-      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" $(arch)
-      cd build
-      ninja install
-    displayName: 'Install all projects'
-    condition: eq(variables.rid, 'win')
-
-  - script: |
-      cd build
-      mkdir -p $(Build.ArtifactStagingDirectory)/$(rid)
-      ninja install
-    displayName: 'Install all projects'
-    condition: ne(variables.plat, 'win')
+      rootFolderOrFile: '$(Build.BinariesDirectory)'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/$(publishName).zip'
+    displayName: 'Archive'
 
   - task: PublishBuildArtifacts@1
-    displayName: 'Publish'
     inputs:
-      artifactName: 'publish'
+      ArtifactName: 'publish'
+
+- job: Build_Mac
+  pool:
+    vmImage: 'macOS-13'
+  
+  steps:
+  - script: |
+      rustup toolchain install nightly
+      rustup +nightly target add x86_64-apple-darwin
+      rustup +nightly target add aarch64-apple-darwin
+    displayName: "Install toolchain"
+
+  - script: |
+      cargo +nightly build --release --workspace --exclude native --target x86_64-apple-darwin
+    displayName: "Build x64"
+
+  - script: |
+      cargo +nightly build --release --workspace --exclude native --target aarch64-apple-darwin
+    displayName: "Build arm64"
+
+  - script: |
+      macbundle/bundle.sh
+      cp target/macbundle/balls.app.zip $(Build.ArtifactStagingDirectory)/balls.mac.app.zip
+    displayName: "Create bundle"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      ArtifactName: 'publish'
