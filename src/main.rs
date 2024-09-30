@@ -62,6 +62,9 @@ fn main() {
         let window = Window::new().unwrap();
         window.set_size(Size::new(800.0, 600.0)).unwrap();
 
+        #[cfg(windows)]
+        window.set_icon_by_id(101).unwrap();
+
         let canvas = Canvas::new(&window).unwrap();
 
         let state = Rc::new(Mutex::new(State::default()));
