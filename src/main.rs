@@ -373,8 +373,19 @@ async fn wait_close(window: Rc<Window>, state: Weak<Mutex<State>>) {
     loop {
         window.wait_close().await;
 
+        let running = if let Some(state) = state.upgrade() {
+            let mut state = state.lock().await;
+            std::mem::replace(&mut state.timer_running, false)
+        } else {
+            false
+        };
+
         if !show_close(&window, state.clone()).await {
             break;
+        }
+
+        if let Some(state) = state.upgrade() {
+            state.lock().await.timer_running = running;
         }
     }
 }
