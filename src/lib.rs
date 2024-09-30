@@ -1,4 +1,9 @@
-use std::{cell::RefCell, f64::consts::PI, rc::Rc};
+use std::{
+    cell::RefCell,
+    f64::consts::PI,
+    io::{Cursor, Read},
+    rc::Rc,
+};
 
 use bitflags::bitflags;
 use euclid::Angle;
@@ -29,10 +34,17 @@ pub enum Difficulty {
     Compete,
 }
 
-// The score is always positive.
-#[repr(transparent)]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct Score(pub i32);
+impl Difficulty {
+    pub fn from_i32(v: i32) -> Option<Self> {
+        match v {
+            0 => Some(Self::Simple),
+            1 => Some(Self::Normal),
+            2 => Some(Self::Hard),
+            3 => Some(Self::Compete),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Special {
@@ -47,7 +59,7 @@ pub enum Special {
 pub enum BallType {
     #[default]
     None,
-    Normal(Score),
+    Normal(i32),
     Special(Special),
 }
 
@@ -62,6 +74,33 @@ impl BallType {
 
     pub fn is_special(&self) -> bool {
         !(self.is_none() || self.is_normal())
+    }
+
+    pub fn to_i32(&self) -> i32 {
+        match self {
+            Self::None => 0,
+            Self::Normal(s) => *s,
+            Self::Special(s) => match s {
+                Special::New => -1,
+                Special::Delete => -2,
+                Special::Random => -3,
+                Special::RandomOld => -4,
+                Special::DoubleScore => -5,
+            },
+        }
+    }
+
+    pub fn from_i32(v: i32) -> Option<Self> {
+        match v {
+            1.. => Some(Self::Normal(v)),
+            0 => Some(Self::None),
+            -1 => Some(Self::Special(Special::New)),
+            -2 => Some(Self::Special(Special::Delete)),
+            -3 => Some(Self::Special(Special::Random)),
+            -4 => Some(Self::Special(Special::RandomOld)),
+            -5 => Some(Self::Special(Special::DoubleScore)),
+            _ => None,
+        }
     }
 }
 
@@ -209,10 +248,10 @@ impl Map {
         if let Some(b) = self.map.get_mut(r).and_then(|arr| arr.get_mut(c)) {
             match b {
                 BallType::Normal(s) => {
-                    if s.0 == 1 {
+                    if *s == 1 {
                         *b = BallType::None;
                     } else {
-                        s.0 -= 1;
+                        *s -= 1;
                     }
                 }
                 _ => unreachable!(),
@@ -361,7 +400,7 @@ impl Map {
             if uni.sample(&mut self.rng) < 0.6 {
                 let v = distr.sample(&mut self.rng).round() as i32;
                 if v > 0 {
-                    self.map[0][c] = BallType::Normal(Score(v));
+                    self.map[0][c] = BallType::Normal(v);
                     continue;
                 }
             }
@@ -424,6 +463,125 @@ impl Map {
             }
         }
         self.sample = tp - v;
+    }
+
+    pub fn to_vec(&self, ticker: Option<&MapTicker>) -> Vec<u8> {
+        let buffer = vec![];
+        let mut writer = BufferWriter(buffer);
+
+        writer.write_i32_le(RECORD_VERSION);
+        writer.write_i32_le(self.balls_num as _);
+        writer.write_f64_le(self.start);
+        writer.write_f64_le(CLIENT_HEIGHT - RADIUS);
+        let end_pos = ticker
+            .and_then(|ticker| ticker.new_start)
+            .unwrap_or(self.start);
+        writer.write_f64_le(end_pos);
+        writer.write_f64_le(CLIENT_HEIGHT - RADIUS);
+        writer.write_f64_le(self.startv.x);
+        writer.write_f64_le(self.startv.y);
+        writer.write_i32_le(if self.doubled_score { 1 } else { 0 });
+        writer.write_u64_le(self.score);
+        writer.write_i32_le(self.difficulty as i32);
+        for row in self.map {
+            for b in row {
+                writer.write_i32_le(b.to_i32());
+            }
+        }
+        if let Some(ticker) = ticker {
+            writer.write_i32_le((ticker.stopped + ticker.remain + ticker.balls.len()) as _);
+            writer.write_i32_le(ticker.stopped as _);
+            writer.write_i32_le(ticker.iloop as _);
+            writer.write_u64_le(ticker.balls.len() as _);
+            for b in ticker.balls() {
+                writer.write_f64_le(b.pos.x);
+                writer.write_f64_le(b.pos.y);
+                writer.write_f64_le(b.speed.x);
+                writer.write_f64_le(b.speed.y);
+            }
+        } else {
+            writer.write_i32_le(self.balls_num as _);
+            writer.write_i32_le(self.balls_num as _);
+            writer.write_i32_le(0);
+            writer.write_u64_le(0);
+        }
+        writer.0
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> std::io::Result<(Rc<RefCell<Self>>, Option<MapTicker>)> {
+        let mut reader = BufferReader(Cursor::new(bytes));
+
+        let ver = reader.read_i32_le();
+        if ver != RECORD_VERSION {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "record version mismatch",
+            ));
+        }
+        let balls_num = reader.read_i32_le() as usize;
+        let start = reader.read_f64_le();
+        reader.read_f64_le();
+        let end_pos = reader.read_f64_le();
+        let new_start = if end_pos != start {
+            Some(end_pos)
+        } else {
+            None
+        };
+        reader.read_f64_le();
+        let x = reader.read_f64_le();
+        let y = reader.read_f64_le();
+        let startv = Vector::new(x, y);
+        let doubled_score = reader.read_i32_le() != 0;
+        let score = reader.read_u64_le();
+        let difficulty = Difficulty::from_i32(reader.read_i32_le()).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid difficulty")
+        })?;
+        let mut map: [[BallType; COLUMNS]; ROWS] = Default::default();
+        for row in &mut map {
+            for b in row {
+                *b = BallType::from_i32(reader.read_i32_le()).ok_or_else(|| {
+                    std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid ball type")
+                })?;
+            }
+        }
+        let map = Self {
+            map,
+            difficulty,
+            score,
+            start,
+            startv,
+            balls_num,
+            doubled_score,
+            ..Default::default()
+        };
+        let map = Rc::new(RefCell::new(map));
+
+        let balls_num = reader.read_i32_le() as usize;
+        let stopped = reader.read_i32_le() as usize;
+        let iloop = reader.read_i32_le() as usize;
+        let balls_len = reader.read_u64_le() as usize;
+        if balls_len == 0 {
+            Ok((map, None))
+        } else {
+            let mut balls = vec![];
+            for _i in 0..balls_len {
+                let posx = reader.read_f64_le();
+                let posy = reader.read_f64_le();
+                let speedx = reader.read_f64_le();
+                let speedy = reader.read_f64_le();
+                let b = Ball::new(Point::new(posx, posy), Vector::new(speedx, speedy));
+                balls.push(b);
+            }
+            let ticker = MapTicker {
+                map: map.clone(),
+                balls,
+                remain: balls_num - stopped - balls_len,
+                stopped,
+                iloop,
+                new_start,
+            };
+            Ok((map, Some(ticker)))
+        }
     }
 }
 
@@ -547,4 +705,47 @@ impl Drop for MapTicker {
         }
         map.doubled_score = false;
     }
+}
+
+macro_rules! impl_buffer_writer {
+    ($t:ty) => {
+        paste::paste! {
+            pub fn [< write_ $t _le >](&mut self, v:$t) {
+                let bytes = v.to_le_bytes();
+                self.0.extend(bytes);
+            }
+        }
+    };
+}
+
+struct BufferWriter(Vec<u8>);
+
+impl BufferWriter {
+    impl_buffer_writer!(i32);
+
+    impl_buffer_writer!(u64);
+
+    impl_buffer_writer!(f64);
+}
+
+macro_rules! impl_buffer_reader {
+    ($t:ty) => {
+        paste::paste! {
+            pub fn [< read_ $t _le >](&mut self) -> $t {
+                let mut bytes = [0u8; std::mem::size_of::<$t>()];
+                self.0.read_exact(&mut bytes).unwrap();
+                $t::from_le_bytes(bytes)
+            }
+        }
+    };
+}
+
+struct BufferReader<'a>(Cursor<&'a [u8]>);
+
+impl BufferReader<'_> {
+    impl_buffer_reader!(i32);
+
+    impl_buffer_reader!(u64);
+
+    impl_buffer_reader!(f64);
 }

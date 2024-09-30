@@ -8,11 +8,12 @@ use std::{
 };
 
 use balls::{BallType, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE, Special};
-use compio::{runtime::spawn, time::interval};
-use futures_util::FutureExt;
+use compio::{fs::File, io::AsyncWriteAtExt, runtime::spawn, time::interval};
+use futures_util::{FutureExt, lock::Mutex};
 use winio::{
-    BrushPen, Canvas, Color, DrawingFontBuilder, HAlign, Point, Rect, Size, SolidColorBrush,
-    VAlign, Window, block_on,
+    BrushPen, Canvas, Color, DrawingFontBuilder, FileBox, HAlign, MessageBox, MessageBoxButton,
+    MessageBoxResponse, MessageBoxStyle, MouseButton, Point, Rect, Size, SolidColorBrush, VAlign,
+    Window, block_on,
 };
 
 #[derive(Debug, Default)]
@@ -21,6 +22,7 @@ struct State {
     ticker: Option<MapTicker>,
     drect: Rect,
     mouse: Point,
+    timer_running: bool,
 }
 
 impl State {
@@ -62,10 +64,11 @@ fn main() {
 
         let canvas = Canvas::new(&window).unwrap();
 
-        let state = Rc::new(RefCell::new(State::default()));
+        let state = Rc::new(Mutex::new(State::default()));
 
         {
-            let state = state.borrow();
+            let mut state = state.lock().await;
+            state.timer_running = true;
             let mut m = state.map.borrow_mut();
             m.init(Difficulty::Simple);
             m.reset();
@@ -77,9 +80,14 @@ fn main() {
             Rc::downgrade(&state),
         ))
         .detach();
-        spawn(tick(Rc::downgrade(&canvas), Rc::downgrade(&state))).detach();
+        spawn(tick(
+            Rc::downgrade(&window),
+            Rc::downgrade(&canvas),
+            Rc::downgrade(&state),
+        ))
+        .detach();
         spawn(redraw(Rc::downgrade(&canvas), Rc::downgrade(&state))).detach();
-        wait_close(window).await;
+        wait_close(window, Rc::downgrade(&state)).await;
     })
 }
 
@@ -92,7 +100,7 @@ fn difficulty_str(difficulty: Difficulty) -> &'static str {
     }
 }
 
-async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
+async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<State>>) {
     while let Some(window) = window.upgrade()
         && let Some(canvas) = canvas.upgrade()
     {
@@ -101,28 +109,8 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<
         canvas.set_size(csize + Size::new(1., 1.)).unwrap();
         canvas.set_loc(Point::zero()).unwrap();
         if let Some(state) = state.upgrade() {
-            let mut state = state.borrow_mut();
+            let mut state = state.lock().await;
             state.set_drect(&canvas);
-
-            let map = state.map.borrow();
-            let difficulty = map.difficulty();
-            let title = if let Some(ticker) = state.ticker.as_ref() {
-                format!(
-                    "二维弹球 - {} 球数：{} 剩余球数：{} 分数：{}",
-                    difficulty_str(difficulty),
-                    map.balls_num(),
-                    ticker.remain(),
-                    map.score()
-                )
-            } else {
-                format!(
-                    "二维弹球 - {} 球数：{} 分数：{}",
-                    difficulty_str(difficulty),
-                    map.balls_num(),
-                    map.score()
-                )
-            };
-            window.set_text(title).unwrap();
         }
         canvas.redraw().unwrap();
         futures_util::select! {
@@ -130,7 +118,7 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<
             _ = window.wait_move().fuse() => {}
             p = canvas.wait_mouse_move().fuse() => {
                 if let Some(state) = state.upgrade() {
-                    let mut state = state.borrow_mut();
+                    let mut state = state.lock().await;
                     if state.ticker.is_none() {
                         let p = p.unwrap();
                         state.mouse = p;
@@ -139,11 +127,21 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<RefCell<
                     }
                 }
             }
-            _ = canvas.wait_mouse_up().fuse() => {
+            b = canvas.wait_mouse_up().fuse() => {
                 if let Some(state) = state.upgrade() {
-                    let mut state = state.borrow_mut();
-                    if state.ticker.is_none() {
-                        state.ticker = Some(Map::start(state.map.clone(), state.com_point(state.mouse)));
+                    let mut state = state.lock().await;
+                    match b {
+                        MouseButton::Left => {
+                            if state.ticker.is_none() {
+                                state.ticker = Some(Map::start(state.map.clone(), state.com_point(state.mouse)));
+                            }
+                        }
+                        MouseButton::Right => {
+                            if state.ticker.is_some() {
+                                state.timer_running = !state.timer_running;
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -193,7 +191,7 @@ fn special_color(s: Special) -> Color {
     }
 }
 
-async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
+async fn redraw(canvas: Weak<Canvas>, state: Weak<Mutex<State>>) {
     while let Some(canvas) = canvas.upgrade() {
         let ctx = canvas.wait_redraw().await.unwrap();
 
@@ -202,7 +200,7 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
         ctx.fill_rect(brush, Rect::from_size(size)).unwrap();
 
         if let Some(state) = state.upgrade() {
-            let state = state.borrow();
+            let state = state.lock().await;
             let drect = state.drect;
             let brush = SolidColorBrush::new(BACK);
             ctx.fill_rect(brush, drect).unwrap();
@@ -255,7 +253,7 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
                     match t {
                         BallType::None => {}
                         BallType::Normal(score) => {
-                            let fillc = square_color(score.0);
+                            let fillc = square_color(*score);
                             let btext =
                                 SolidColorBrush::new(if fillc.g > 127 { BACK } else { FORE });
                             let bfill = SolidColorBrush::new(fillc);
@@ -268,7 +266,7 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
                             let radius = Size::new(10.0, 10.0) * extend;
                             ctx.fill_round_rect(bfill, round_rect, radius).unwrap();
                             ctx.draw_round_rect(&pborder, round_rect, radius).unwrap();
-                            ctx.draw_str(btext, font.clone(), center, score.0.to_string())
+                            ctx.draw_str(btext, font.clone(), center, score.to_string())
                                 .unwrap();
                         }
                         BallType::Special(special) => {
@@ -322,28 +320,95 @@ async fn redraw(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
     }
 }
 
-async fn tick(canvas: Weak<Canvas>, state: Weak<RefCell<State>>) {
-    let mut interval = interval(Duration::from_micros(10));
-    while let Some(state) = state.upgrade()
+async fn tick(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<State>>) {
+    let mut interval = interval(Duration::from_millis(10));
+    while let Some(window) = window.upgrade()
+        && let Some(state) = state.upgrade()
         && let Some(canvas) = canvas.upgrade()
     {
         interval.tick().await;
 
-        let mut state = state.borrow_mut();
-        if let Some(mut ticker) = state.ticker.take() {
-            if ticker.tick() {
-                state.ticker = Some(ticker);
-            } else {
-                drop(ticker);
-                let mut map = state.map.borrow_mut();
-                map.reset();
+        let mut state = state.lock().await;
+        if state.timer_running {
+            if let Some(mut ticker) = state.ticker.take() {
+                if ticker.tick() {
+                    state.ticker = Some(ticker);
+                } else {
+                    drop(ticker);
+                    let mut map = state.map.borrow_mut();
+                    map.reset();
+                    map.update_sample(state.com_point(state.mouse));
+                }
             }
+
+            let map = state.map.borrow();
+            let difficulty = map.difficulty();
+            let title = if let Some(ticker) = state.ticker.as_ref() {
+                format!(
+                    "二维弹球 - {} 球数：{} 剩余球数：{} 分数：{}",
+                    difficulty_str(difficulty),
+                    map.balls_num(),
+                    ticker.remain(),
+                    map.score()
+                )
+            } else {
+                format!(
+                    "二维弹球 - {} 球数：{} 分数：{}",
+                    difficulty_str(difficulty),
+                    map.balls_num(),
+                    map.score()
+                )
+            };
+            window.set_text(title).unwrap();
         }
 
         canvas.redraw().unwrap();
     }
 }
 
-async fn wait_close(window: Rc<Window>) {
-    window.wait_close().await;
+async fn wait_close(window: Rc<Window>, state: Weak<Mutex<State>>) {
+    loop {
+        window.wait_close().await;
+
+        if !show_close(&window, state.clone()).await {
+            break;
+        }
+    }
+}
+
+async fn show_close(window: &Window, state: Weak<Mutex<State>>) -> bool {
+    let res = MessageBox::new()
+        .title("二维弹球")
+        .message("游戏尚未结束，是否存档？")
+        .buttons(MessageBoxButton::Yes | MessageBoxButton::No | MessageBoxButton::Cancel)
+        .style(MessageBoxStyle::Info)
+        .show(Some(window))
+        .await
+        .unwrap();
+    match res {
+        MessageBoxResponse::Yes => !show_save(window, state).await,
+        MessageBoxResponse::Cancel => true,
+        _ => false,
+    }
+}
+
+async fn show_save(window: &Window, state: Weak<Mutex<State>>) -> bool {
+    let filename = FileBox::new()
+        .add_filter(("存档文件", "*.balls"))
+        .save(Some(window))
+        .await
+        .unwrap();
+    if let Some(filename) = filename {
+        if let Some(state) = state.upgrade() {
+            let data = {
+                let state = state.lock().await;
+                let map = state.map.borrow();
+                map.to_vec(state.ticker.as_ref())
+            };
+            let mut file = File::create(filename).await.unwrap();
+            file.write_all_at(data, 0).await.unwrap();
+            return true;
+        }
+    }
+    false
 }
