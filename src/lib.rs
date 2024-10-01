@@ -72,10 +72,6 @@ impl BallType {
         matches!(self, Self::Normal(_))
     }
 
-    pub fn is_special(&self) -> bool {
-        !(self.is_none() || self.is_normal())
-    }
-
     pub fn to_i32(&self) -> i32 {
         match self {
             Self::None => 0,
@@ -271,8 +267,6 @@ impl Map {
         let c = clip(c as usize, 0, COLUMNS - 1);
         let r = clip(r as usize, 0, ROWS - 1);
 
-        let bside = self.bounce_side(c, r);
-
         let current = &mut self.map[r][c];
         match current {
             BallType::None | BallType::Normal(_) => {}
@@ -312,6 +306,7 @@ impl Map {
             }
         }
 
+        let bside = self.bounce_side(c, r);
         b.pos += b.speed;
         let nbside = get_side(b.pos, ls, ts, rs, bs);
 
@@ -321,7 +316,8 @@ impl Map {
         } else if bside.contains(BounceSide::RIGHT) && nbside.contains(BounceSide::RIGHT) {
             change_ball(&mut b.speed.x, &mut b.pos.x, rs, false);
             self.hit(r, c + 1);
-        } else if bside.contains(BounceSide::TOP) && nbside.contains(BounceSide::TOP) {
+        }
+        if bside.contains(BounceSide::TOP) && nbside.contains(BounceSide::TOP) {
             change_ball(&mut b.speed.y, &mut b.pos.y, ts, true);
             self.hit(r.wrapping_sub(1), c);
         } else if bside.contains(BounceSide::BOTTOM)
@@ -359,7 +355,7 @@ impl Map {
     }
 
     pub fn is_over(&self) -> bool {
-        !self.map[ROWS - 1].iter().all(|b| b.is_none())
+        !self.map[ROWS - 1].iter().all(|b| !b.is_normal())
     }
 
     fn get_start(&self, p: Point, speed: f64) -> Vector {
