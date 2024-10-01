@@ -18,8 +18,8 @@ pub const COLUMNS: usize = 6;
 pub const ROWS: usize = 8;
 pub const RADIUS: f64 = 20.0;
 pub const SIDE: f64 = 200.0;
-pub const CLIENT_WIDTH: f64 = SIDE * COLUMNS as f64;
-pub const CLIENT_HEIGHT: f64 = SIDE * ROWS as f64;
+pub const CLIENT_WIDTH: f64 = SIDE * COLUMNS as f64 - 1.0;
+pub const CLIENT_HEIGHT: f64 = SIDE * ROWS as f64 - 1.0;
 pub const SPEED: f64 = 50.0;
 pub const NUM_SIZE: f64 = 100.0;
 pub const RECORD_VERSION: i32 = 2;
@@ -264,9 +264,9 @@ impl Map {
         let c = (b.pos.x / SIDE).floor();
         let r = (b.pos.y / SIDE).floor();
         let ls = c * SIDE;
-        let rs = (c + 1.0) * SIDE;
+        let rs = (c + 1.0) * SIDE - 1.0;
         let ts = r * SIDE;
-        let bs = (r + 1.0) * SIDE;
+        let bs = (r + 1.0) * SIDE - 1.0;
 
         let c = clip(c as usize, 0, COLUMNS - 1);
         let r = clip(r as usize, 0, ROWS - 1);
