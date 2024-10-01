@@ -45,9 +45,9 @@ jobs:
 - job: Build_Ubuntu
   strategy:
     matrix:
-      jammy-x64:
-        image: 'ubuntu-22.04'
-        ubuntuDist: 'jammy'
+      noble-x64:
+        image: 'ubuntu-24.04'
+        ubuntuDist: 'noble'
         target: 'x86_64-unknown-linux-gnu'
         arch: 'x86_64'
   pool:
