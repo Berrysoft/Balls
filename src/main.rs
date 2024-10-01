@@ -419,7 +419,9 @@ async fn tick(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<Stat
                     map.score()
                 )
             };
-            window.set_text(title).unwrap();
+            if window.text().unwrap() != title {
+                window.set_text(title).unwrap();
+            }
         }
 
         canvas.redraw().unwrap();
