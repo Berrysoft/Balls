@@ -93,7 +93,7 @@ fn main() {
         window.set_size(Size::new(450.0, 600.0)).unwrap();
 
         #[cfg(windows)]
-        window.set_icon_by_id(101).unwrap();
+        window.set_icon_by_id(1).unwrap();
 
         let (close_tx, close_rx) = oneshot::channel();
         let state = Rc::new(Mutex::new(State::new(close_tx)));

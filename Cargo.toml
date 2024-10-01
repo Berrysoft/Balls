@@ -15,8 +15,12 @@ rand_distr = "0.4.3"
 winio = { version = "0.1.5", features = ["nightly"] }
 
 [build-dependencies]
-embed-resource = "2"
+winres = "0.1.12"
 
 [profile.release]
 lto = true
 codegen-units = 1
+
+[package.metadata.winres]
+FileDescription = "二维弹球"
+LegalCopyright = "Copyright (c) 2018-2024 Berrysoft"
