@@ -225,16 +225,24 @@ impl Map {
         if self.is_side(r + 1, c) {
             result |= BounceSide::BOTTOM;
         }
-        if self.is_pluge(r.wrapping_sub(1), c.wrapping_sub(1)) && !result.contains(BounceSide::LT) {
+        if self.is_pluge(r.wrapping_sub(1), c.wrapping_sub(1))
+            && !(result.contains(BounceSide::LEFT) || result.contains(BounceSide::TOP))
+        {
             result |= BounceSide::LT_A;
         }
-        if self.is_pluge(r.wrapping_sub(1), c + 1) && !result.contains(BounceSide::RT) {
+        if self.is_pluge(r.wrapping_sub(1), c + 1)
+            && !(result.contains(BounceSide::RIGHT) || result.contains(BounceSide::TOP))
+        {
             result |= BounceSide::RT_A;
         }
-        if self.is_pluge(r + 1, c.wrapping_sub(1)) && !result.contains(BounceSide::LB) {
+        if self.is_pluge(r + 1, c.wrapping_sub(1))
+            && !(result.contains(BounceSide::LEFT) || result.contains(BounceSide::BOTTOM))
+        {
             result |= BounceSide::LB_A;
         }
-        if self.is_pluge(r + 1, c + 1) && !result.contains(BounceSide::RB) {
+        if self.is_pluge(r + 1, c + 1)
+            && !(result.contains(BounceSide::RIGHT) || result.contains(BounceSide::BOTTOM))
+        {
             result |= BounceSide::RB_A;
         }
         result
