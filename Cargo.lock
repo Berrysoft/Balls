@@ -994,6 +994,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc2-uniform-type-identifiers"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44fa5f9748dbfe1ca6c0b79ad20725a11eca7c2218bceb4b005cb1be26273bfe"
+dependencies = [
+ "block2",
+ "objc2",
+ "objc2-foundation",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1716,9 +1727,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winio"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ad56500ca372810061feeab9402a425066b72bcdd821e73665776bdf1056577"
+checksum = "0e3ac3b9cc9040de0e1e05b38fba103290f1dc4df4f325bd0276aefdaaa380ac"
 dependencies = [
  "block2",
  "cfg-if",
@@ -1735,6 +1746,7 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
+ "objc2-uniform-type-identifiers",
  "once_cell",
  "pangocairo",
  "rgb",
