@@ -31,7 +31,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "balls"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "bitflags 2.6.0",
  "compio",
@@ -109,9 +109,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.1.22"
+version = "1.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9540e661f81799159abee814118cc139a2004b3a3aa3ea37724a1b66530b90e0"
+checksum = "812acba72f0a070b003d3697490d2b55b837230ae7c6c6497f05cc2ddbb8d938"
 dependencies = [
  "shlex",
 ]
@@ -1727,9 +1727,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winio"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e3ac3b9cc9040de0e1e05b38fba103290f1dc4df4f325bd0276aefdaaa380ac"
+checksum = "f2221d272fc97d3761c11e9c3bf0b824da0f94dda3749a3d1af319703b38e4df"
 dependencies = [
  "block2",
  "cfg-if",
