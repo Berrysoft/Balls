@@ -2,6 +2,10 @@
 name = "balls"
 version = "3.0.0"
 edition = "2021"
+description = "二维弹球"
+authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
+license = "MIT"
+repository = "https://github.com/Berrysoft/Balls"
 
 [dependencies]
 bitflags = { version = "2.6.0", features = ["std"] }
@@ -24,3 +28,17 @@ codegen-units = 1
 [package.metadata.winres]
 FileDescription = "二维弹球"
 LegalCopyright = "Copyright (c) 2018-2024 Berrysoft"
+
+[package.metadata.deb]
+assets = [
+    [
+        "logo.png",
+        "usr/share/icons/hicolor/256x256/apps/balls.png",
+        "644",
+    ],
+    [
+        "balls.desktop",
+        "usr/share/applications/balls.desktop",
+        "755",
+    ],
+]

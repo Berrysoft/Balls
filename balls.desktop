@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=二维弹球
+GenericName=二维弹球
+Exec=balls
+Icon=balls
+NoDisplay=false
+Terminal=false

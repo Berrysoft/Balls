@@ -42,6 +42,36 @@ jobs:
     inputs:
       ArtifactName: 'publish'
 
+- job: Build_Ubuntu
+  strategy:
+    matrix:
+      jammy-x64:
+        image: 'ubuntu-22.04'
+        ubuntuDist: 'jammy'
+        target: 'x86_64-unknown-linux-gnu'
+        arch: 'x86_64'
+  pool:
+    vmImage: $(image)
+  
+  steps:
+  - script: |
+      sudo apt-get install libgtk-4-dev
+    displayName: 'Install gtk'
+
+  - script: |
+      rustup toolchain install nightly
+      rustup +nightly target add $(target)
+      cargo +nightly install cargo-deb
+    displayName: "Install cargo-deb"
+
+  - script: |
+      cargo +nightly deb --target $(target) -o $(Build.ArtifactStagingDirectory)/tunet.$(ubuntuDist).$(arch).deb
+    displayName: "Build"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      ArtifactName: 'publish'
+
 - job: Build_Mac
   pool:
     vmImage: 'macOS-13'
@@ -54,11 +84,11 @@ jobs:
     displayName: "Install toolchain"
 
   - script: |
-      cargo +nightly build --release --workspace --exclude native --target x86_64-apple-darwin
+      cargo +nightly build --release --target x86_64-apple-darwin
     displayName: "Build x64"
 
   - script: |
-      cargo +nightly build --release --workspace --exclude native --target aarch64-apple-darwin
+      cargo +nightly build --release --target aarch64-apple-darwin
     displayName: "Build arm64"
 
   - script: |
