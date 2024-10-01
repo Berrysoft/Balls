@@ -95,6 +95,8 @@ fn main() {
         #[cfg(windows)]
         window.set_icon_by_id(1).unwrap();
 
+        let canvas = Canvas::new(&window).unwrap();
+
         let (close_tx, close_rx) = oneshot::channel();
         let state = Rc::new(Mutex::new(State::new(close_tx)));
 
@@ -111,8 +113,6 @@ fn main() {
                 return;
             }
         }
-
-        let canvas = Canvas::new(&window).unwrap();
 
         spawn(render(
             Rc::downgrade(&window),
