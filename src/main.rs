@@ -146,7 +146,7 @@ async fn render(window: Weak<Window>, canvas: Weak<Canvas>, state: Weak<Mutex<St
     {
         let csize = window.client_size().unwrap();
         // Avoid rounding error.
-        canvas.set_size(csize + Size::new(1., 1.)).unwrap();
+        canvas.set_size(csize).unwrap();
         canvas.set_loc(Point::zero()).unwrap();
         if let Some(state) = state.upgrade() {
             let mut state = state.lock().await;
