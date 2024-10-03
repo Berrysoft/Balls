@@ -9,6 +9,7 @@ repository = "https://github.com/Berrysoft/Balls"
 
 [dependencies]
 bitflags = { version = "2.6.0", features = ["std"] }
+bytes = "1.7.2"
 compio = { version = "0.12.0", features = ["macros", "nightly", "time"] }
 euclid = "0.22.11"
 futures-channel = "0.3.30"

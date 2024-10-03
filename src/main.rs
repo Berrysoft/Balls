@@ -535,7 +535,7 @@ async fn show_close(window: &Window, state: Weak<Mutex<State>>) -> bool {
 async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> bool {
     let file = File::open(path).await.unwrap();
     let (_, buffer) = file.read_to_end_at(vec![], 0).await.unwrap();
-    if let Ok((map, ticker)) = Map::from_bytes(&buffer) {
+    if let Ok((map, ticker)) = Map::from_bytes(buffer) {
         map.borrow_mut().update_sample(state.com_point(state.mouse));
         state.map = map;
         state.timer_running = ticker.is_none();
