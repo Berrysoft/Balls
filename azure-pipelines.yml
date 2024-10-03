@@ -65,7 +65,7 @@ jobs:
     displayName: "Install cargo-deb"
 
   - script: |
-      cargo +nightly deb --target $(target) -o $(Build.ArtifactStagingDirectory)/tunet.$(ubuntuDist).$(arch).deb
+      cargo +nightly deb --target $(target) -o $(Build.ArtifactStagingDirectory)/balls.$(ubuntuDist).$(arch).deb
     displayName: "Build"
 
   - task: PublishBuildArtifacts@1
