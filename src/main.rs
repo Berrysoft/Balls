@@ -195,12 +195,9 @@ impl Component for MainModel {
                                 let difficulty = self.state.map.difficulty();
                                 let balls_num = self.state.map.balls_num();
                                 let score = self.state.map.score();
-                                let cont =
-                                    show_stop(&self.window, difficulty, balls_num, score).await;
-                                if !cont {
-                                    sender.output(());
-                                }
-                                if !init_balls(&self.window, &mut self.state).await {
+                                if !show_stop(&self.window, difficulty, balls_num, score).await
+                                    || !init_balls(&self.window, &mut self.state).await
+                                {
                                     sender.output(());
                                 }
                             }
