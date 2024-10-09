@@ -42,7 +42,7 @@ jobs:
     inputs:
       ArtifactName: 'publish'
 
-- job: Build_Ubuntu
+- job: Build_Ubuntu_GTK
   strategy:
     matrix:
       noble-x64:
@@ -65,7 +65,42 @@ jobs:
     displayName: "Install cargo-deb"
 
   - script: |
-      cargo +nightly deb --target $(target) -o $(Build.ArtifactStagingDirectory)/balls.$(ubuntuDist).$(arch).deb
+      cargo +nightly deb --target $(target) --no-default-features --features gtk -o $(Build.ArtifactStagingDirectory)/balls.gtk.$(ubuntuDist).$(arch).deb
+    displayName: "Build"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      ArtifactName: 'publish'
+
+- job: Build_Ubuntu_QT
+  strategy:
+    matrix:
+      jammy-x64:
+        image: 'ubuntu-22.04'
+        ubuntuDist: 'jammy'
+        target: 'x86_64-unknown-linux-gnu'
+        arch: 'x86_64'
+      noble-x64:
+        image: 'ubuntu-24.04'
+        ubuntuDist: 'noble'
+        target: 'x86_64-unknown-linux-gnu'
+        arch: 'x86_64'
+  pool:
+    vmImage: $(image)
+  
+  steps:
+  - script: |
+      sudo apt-get install qt6-base-dev
+    displayName: 'Install qt'
+
+  - script: |
+      rustup toolchain install nightly
+      rustup +nightly target add $(target)
+      cargo +nightly install cargo-deb
+    displayName: "Install cargo-deb"
+
+  - script: |
+      cargo +nightly deb --target $(target) -o $(Build.ArtifactStagingDirectory)/balls.qt.$(ubuntuDist).$(arch).deb
     displayName: "Build"
 
   - task: PublishBuildArtifacts@1
