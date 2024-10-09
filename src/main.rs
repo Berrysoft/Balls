@@ -114,7 +114,9 @@ impl Component for MainModel {
             let mut interval = interval(Duration::from_millis(10));
             loop {
                 interval.tick().await;
-                sender.post(MainMessage::Tick);
+                if !sender.post(MainMessage::Tick) {
+                    break;
+                }
             }
         })
         .detach();
