@@ -65,7 +65,8 @@ jobs:
     displayName: "Install cargo-deb"
 
   - script: |
-      cargo +nightly deb --target $(target) --no-default-features --features gtk -o $(Build.ArtifactStagingDirectory)/balls.gtk.$(ubuntuDist).$(arch).deb
+      cargo +nightly build --target $(target) --release --no-default-features --features gtk
+      cargo +nightly deb --target $(target) --no-build -o $(Build.ArtifactStagingDirectory)/balls.gtk.$(ubuntuDist).$(arch).deb
     displayName: "Build"
 
   - task: PublishBuildArtifacts@1
