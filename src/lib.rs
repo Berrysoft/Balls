@@ -1,14 +1,13 @@
 use std::{f64::consts::PI, io::Cursor};
 
 use bitflags::bitflags;
-use bytes::{Buf, BufMut, BytesMut};
-use euclid::Angle;
+use compio::bytes::{Buf, BufMut, BytesMut};
 use rand::rngs::ThreadRng;
 use rand_distr::{
     Distribution, Normal,
     uniform::{UniformFloat, UniformInt, UniformSampler},
 };
-use winio::{Point, Vector};
+use winio::{Angle, Point, Vector};
 
 pub const COLUMNS: usize = 6;
 pub const ROWS: usize = 8;

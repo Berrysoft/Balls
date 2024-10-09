@@ -34,10 +34,7 @@ name = "balls"
 version = "3.0.2"
 dependencies = [
  "bitflags 2.6.0",
- "bytes",
  "compio",
- "euclid",
- "futures-channel",
  "futures-util",
  "paste",
  "rand",
@@ -145,6 +142,7 @@ checksum = "efe0e1ba3af4fcf7ee139f145c3d085b5051e10c5fba16dec8ecbb4fd632a676"
 dependencies = [
  "arrayvec",
  "bumpalo",
+ "bytes",
  "libc",
 ]
 
