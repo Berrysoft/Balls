@@ -1,14 +1,13 @@
-use std::{cell::RefCell, f64::consts::PI, io::Cursor, rc::Rc};
+use std::{f64::consts::PI, io::Cursor};
 
 use bitflags::bitflags;
-use bytes::{Buf, BufMut, BytesMut};
-use euclid::Angle;
+use compio::bytes::{Buf, BufMut, BytesMut};
 use rand::rngs::ThreadRng;
 use rand_distr::{
     Distribution, Normal,
     uniform::{UniformFloat, UniformInt, UniformSampler},
 };
-use winio::{Point, Vector};
+use winio::{Angle, Point, Vector};
 
 pub const COLUMNS: usize = 6;
 pub const ROWS: usize = 8;
@@ -428,12 +427,9 @@ impl Map {
         true
     }
 
-    pub fn start(this: Rc<RefCell<Self>>, p: Point) -> MapTicker {
-        {
-            let mut map = this.borrow_mut();
-            map.startv = map.get_start(p, SPEED);
-        }
-        MapTicker::new(this)
+    pub fn start(&mut self, p: Point) -> MapTicker {
+        self.startv = self.get_start(p, SPEED);
+        MapTicker::new(self.balls_num)
     }
 
     pub fn update_sample(&mut self, p: Point) {
@@ -507,9 +503,7 @@ impl Map {
         writer.into()
     }
 
-    pub fn from_bytes(
-        bytes: impl AsRef<[u8]>,
-    ) -> std::io::Result<(Rc<RefCell<Self>>, Option<MapTicker>)> {
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> std::io::Result<(Self, Option<MapTicker>)> {
         let mut reader = Cursor::new(bytes);
 
         let ver = reader.get_i32_le();
@@ -555,7 +549,6 @@ impl Map {
             doubled_score,
             ..Default::default()
         };
-        let map = Rc::new(RefCell::new(map));
 
         let balls_num = reader.get_i32_le() as usize;
         let stopped = reader.get_i32_le() as usize;
@@ -574,7 +567,6 @@ impl Map {
                 balls.push(b);
             }
             let ticker = MapTicker {
-                map: map.clone(),
                 balls,
                 remain: balls_num - stopped - balls_len,
                 stopped,
@@ -621,7 +613,6 @@ fn change_ball_arc(b: &mut Ball, sc: &Point, minus: bool) {
 
 #[derive(Debug)]
 pub struct MapTicker {
-    map: Rc<RefCell<Map>>,
     balls: Vec<Ball>,
     remain: usize,
     stopped: usize,
@@ -630,12 +621,10 @@ pub struct MapTicker {
 }
 
 impl MapTicker {
-    fn new(map: Rc<RefCell<Map>>) -> Self {
-        let remain = map.borrow().balls_num;
+    fn new(balls_num: usize) -> Self {
         Self {
-            map,
             balls: vec![],
-            remain,
+            remain: balls_num,
             stopped: 0,
             iloop: 3,
             new_start: None,
@@ -659,8 +648,7 @@ impl MapTicker {
         self.remain
     }
 
-    pub fn tick(&mut self) -> bool {
-        let mut map = self.map.borrow_mut();
+    pub fn tick(&mut self, map: &mut Map) -> bool {
         self.iloop = (self.iloop + 1) % 4;
         if !self.is_end() && self.iloop == 0 {
             // Add a new ball
@@ -686,6 +674,13 @@ impl MapTicker {
         }
         !self.balls.is_empty()
     }
+
+    pub fn consume(self, map: &mut Map) {
+        if let Some(start) = self.new_start {
+            map.start = start;
+        }
+        map.doubled_score = false;
+    }
 }
 
 fn clip<T: PartialOrd>(v: T, min: T, max: T) -> T {
@@ -695,15 +690,5 @@ fn clip<T: PartialOrd>(v: T, min: T, max: T) -> T {
         max
     } else {
         v
-    }
-}
-
-impl Drop for MapTicker {
-    fn drop(&mut self) {
-        let mut map = self.map.borrow_mut();
-        if let Some(start) = self.new_start {
-            map.start = start;
-        }
-        map.doubled_score = false;
     }
 }
