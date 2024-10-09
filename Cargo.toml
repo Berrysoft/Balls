@@ -48,3 +48,6 @@ assets = [
         "755",
     ],
 ]
+
+[patch.'crates-io']
+winio = { path = "../winio" }
