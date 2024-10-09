@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(let_chains)]
 
-use std::{cell::RefCell, ffi::OsString, path::Path, rc::Rc, time::Duration};
+use std::{ffi::OsString, path::Path, time::Duration};
 
 use balls::{
     BallType, CLIENT_HEIGHT, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE,
@@ -21,7 +21,7 @@ use winio::{
 
 #[derive(Debug)]
 struct State {
-    map: Rc<RefCell<Map>>,
+    map: Map,
     ticker: Option<MapTicker>,
     drect: Rect,
     mouse: Point,
@@ -31,7 +31,7 @@ struct State {
 impl State {
     pub fn new() -> Self {
         Self {
-            map: Rc::new(RefCell::new(Map::default())),
+            map: Map::default(),
             ticker: None,
             drect: Rect::zero(),
             mouse: Point::zero(),
@@ -43,9 +43,8 @@ impl State {
 impl State {
     pub fn set_drect(&mut self, canvas: &Canvas) {
         let size = canvas.size();
-        let map = self.map.borrow();
-        let columns = map.column_len() as f64;
-        let rows = map.row_len() as f64;
+        let columns = self.map.column_len() as f64;
+        let rows = self.map.row_len() as f64;
         let sidew = size.width / columns;
         let sideh = size.height / rows;
         let sidel = sidew.min(sideh);
@@ -130,7 +129,7 @@ impl Component for MainModel {
     async fn start(&mut self, sender: &ComponentSender<Self>) {
         let fut_window = self.window.start(sender, |e| match e {
             WindowEvent::Close => Some(MainMessage::Close),
-            WindowEvent::Move | WindowEvent::Resize => Some(MainMessage::Redraw),
+            WindowEvent::Resize => Some(MainMessage::Redraw),
             _ => None,
         });
         let fut_canvas = self.canvas.start(sender, |e| match e {
@@ -143,7 +142,7 @@ impl Component for MainModel {
 
     async fn update(&mut self, message: Self::Message, sender: &ComponentSender<Self>) -> bool {
         match message {
-            MainMessage::Redraw => return true,
+            MainMessage::Redraw => true,
             MainMessage::Startup(p) => {
                 if let Some(path) = p
                     && compio::fs::metadata(&path).await.is_ok()
@@ -154,48 +153,48 @@ impl Component for MainModel {
                 } else if !init_balls(&self.window, &mut self.state).await {
                     sender.output(());
                 }
+                true
             }
             MainMessage::MouseMove(p) => {
                 self.state.mouse = p;
                 if self.state.ticker.is_none() {
-                    let mut map = self.state.map.borrow_mut();
-                    map.update_sample(self.state.com_point(p));
+                    self.state.map.update_sample(self.state.com_point(p));
+                    true
+                } else {
+                    false
                 }
-                return true;
             }
             MainMessage::MouseUp(b) => match b {
                 MouseButton::Left => {
                     if self.state.ticker.is_none() {
-                        self.state.ticker = Some(Map::start(
-                            self.state.map.clone(),
-                            self.state.com_point(self.state.mouse),
-                        ));
+                        self.state.ticker =
+                            Some(self.state.map.start(self.state.com_point(self.state.mouse)));
                     }
-                    return true;
+                    true
                 }
                 MouseButton::Right => {
                     if self.state.ticker.is_some() {
                         self.state.timer_running = !self.state.timer_running;
                     }
-                    return true;
+                    true
                 }
-                _ => {}
+                _ => false,
             },
             MainMessage::Tick => {
                 if self.state.timer_running {
                     if let Some(mut ticker) = self.state.ticker.take() {
-                        if ticker.tick() {
+                        if ticker.tick(&mut self.state.map) {
                             self.state.ticker = Some(ticker);
                         } else {
-                            drop(ticker);
-                            let mut map = self.state.map.borrow_mut();
-                            if map.reset() {
-                                map.update_sample(self.state.com_point(self.state.mouse));
+                            ticker.consume(&mut self.state.map);
+                            if self.state.map.reset() {
+                                self.state
+                                    .map
+                                    .update_sample(self.state.com_point(self.state.mouse));
                             } else {
-                                let difficulty = map.difficulty();
-                                let balls_num = map.balls_num();
-                                let score = map.score();
-                                drop(map); // avoid to hold it across await
+                                let difficulty = self.state.map.difficulty();
+                                let balls_num = self.state.map.balls_num();
+                                let score = self.state.map.score();
                                 let cont =
                                     show_stop(&self.window, difficulty, balls_num, score).await;
                                 if !cont {
@@ -209,6 +208,7 @@ impl Component for MainModel {
                         return true;
                     }
                 }
+                false
             }
             MainMessage::Close => {
                 let running = std::mem::replace(&mut self.state.timer_running, false);
@@ -218,29 +218,28 @@ impl Component for MainModel {
                 }
 
                 self.state.timer_running = running;
+                false
             }
         }
-        false
     }
 
     fn render(&mut self, _sender: &ComponentSender<Self>) {
         {
-            let map = self.state.map.borrow();
-            let difficulty = map.difficulty();
+            let difficulty = self.state.map.difficulty();
             let title = if let Some(ticker) = self.state.ticker.as_ref() {
                 format!(
                     "二维弹球 - {} 球数：{} 剩余球数：{} 分数：{}",
                     difficulty_str(difficulty),
-                    map.balls_num(),
+                    self.state.map.balls_num(),
                     ticker.remain(),
-                    map.score()
+                    self.state.map.score()
                 )
             } else {
                 format!(
                     "二维弹球 - {} 球数：{} 分数：{}",
                     difficulty_str(difficulty),
-                    map.balls_num(),
-                    map.score()
+                    self.state.map.balls_num(),
+                    self.state.map.score()
                 )
             };
             if self.window.text() != title {
@@ -268,9 +267,8 @@ impl Component for MainModel {
             .halign(HAlign::Center)
             .valign(VAlign::Center)
             .build();
-        let map = self.state.map.borrow();
         if self.state.ticker.is_none() {
-            let sample_pos = map.sample();
+            let sample_pos = self.state.map.sample();
             if sample_pos.x >= RADIUS
                 && sample_pos.x <= CLIENT_WIDTH - RADIUS
                 && sample_pos.y >= RADIUS
@@ -280,12 +278,12 @@ impl Component for MainModel {
                 ctx.fill_ellipse(brush, self.state.ball_rect(sample_pos));
             }
         }
-        let bball = if map.doubled_score() {
+        let bball = if self.state.map.doubled_score() {
             SolidColorBrush::new(YELLOW_CIRCLE)
         } else {
             SolidColorBrush::new(RED_BALL)
         };
-        let start_pos = map.startp();
+        let start_pos = self.state.map.startp();
         let end_shooting = self
             .state
             .ticker
@@ -304,7 +302,7 @@ impl Component for MainModel {
             }
         }
         let pborder = BrushPen::new(SolidColorBrush::new(GREEN_BORDER), 3.0);
-        for (y, row) in map.balls().iter().enumerate() {
+        for (y, row) in self.state.map.balls().iter().enumerate() {
             for (x, t) in row.iter().enumerate() {
                 let cx = x as f64 * SIDE + SIDE / 2.0;
                 let cy = y as f64 * SIDE + SIDE / 2.0;
@@ -456,9 +454,8 @@ async fn init_balls(window: &Window, state: &mut State) -> bool {
         MessageBoxResponse::Custom(COMPETE) => Difficulty::Compete,
         _ => return false,
     };
-    let mut map = state.map.borrow_mut();
-    map.init(difficulty);
-    map.reset()
+    state.map.init(difficulty);
+    state.map.reset()
 }
 
 async fn show_stop(window: &Window, difficulty: Difficulty, balls_num: usize, score: u64) -> bool {
@@ -499,8 +496,8 @@ async fn show_close(window: &Window, state: &mut State) -> bool {
 async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> bool {
     let file = File::open(path).await.unwrap();
     let (_, buffer) = file.read_to_end_at(vec![], 0).await.unwrap();
-    if let Ok((map, ticker)) = Map::from_bytes(buffer) {
-        map.borrow_mut().update_sample(state.com_point(state.mouse));
+    if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
+        map.update_sample(state.com_point(state.mouse));
         state.map = map;
         state.timer_running = ticker.is_none();
         state.ticker = ticker;
@@ -536,10 +533,7 @@ async fn show_save(window: &Window, state: &mut State) -> bool {
         .save(Some(window))
         .await;
     if let Some(filename) = filename {
-        let data = {
-            let map = state.map.borrow();
-            map.to_vec(state.ticker.as_ref())
-        };
+        let data = state.map.to_vec(state.ticker.as_ref());
         let mut file = File::create(filename).await.unwrap();
         file.write_all_at(data, 0).await.unwrap();
         return true;
