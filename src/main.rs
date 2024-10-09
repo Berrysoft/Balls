@@ -19,6 +19,10 @@ use winio::{
     MessageBoxStyle, MouseButton, Point, Rect, Size, SolidColorBrush, VAlign, Window, WindowEvent,
 };
 
+fn main() {
+    App::new().run::<MainModel>(std::env::args_os().nth(1), &());
+}
+
 #[derive(Debug)]
 struct State {
     map: Map,
@@ -69,10 +73,6 @@ impl State {
             Size::new(2.0 * r, 2.0 * r),
         )
     }
-}
-
-fn main() {
-    App::new().run::<MainModel>(std::env::args_os().nth(1), &());
 }
 
 struct MainModel {
