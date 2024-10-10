@@ -76,23 +76,37 @@ jobs:
 - job: Build_Ubuntu_QT
   strategy:
     matrix:
+      focal-x64:
+        image: 'ubuntu-20.04'
+        ubuntuDist: 'focal'
+        target: 'x86_64-unknown-linux-gnu'
+        arch: 'x86_64'
+        qtver: '5'
       jammy-x64:
         image: 'ubuntu-22.04'
         ubuntuDist: 'jammy'
         target: 'x86_64-unknown-linux-gnu'
         arch: 'x86_64'
+        qtver: '6'
       noble-x64:
         image: 'ubuntu-24.04'
         ubuntuDist: 'noble'
         target: 'x86_64-unknown-linux-gnu'
         arch: 'x86_64'
+        qtver: '6'
   pool:
     vmImage: $(image)
   
   steps:
   - script: |
+      sudo apt-get install qtbase5-dev
+    displayName: 'Install qt5'
+    condition: eq(variables['qtver'], '5')
+
+  - script: |
       sudo apt-get install qt6-base-dev
-    displayName: 'Install qt'
+    displayName: 'Install qt6'
+    condition: eq(variables['qtver'], '6')
 
   - script: |
       rustup toolchain install nightly
