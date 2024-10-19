@@ -14,9 +14,10 @@ use compio::{
     time::interval,
 };
 use winio::{
-    App, BrushPen, Canvas, CanvasEvent, Child, Color, Component, ComponentSender, CustomButton,
-    DrawingFontBuilder, FileBox, HAlign, MessageBox, MessageBoxButton, MessageBoxResponse,
-    MessageBoxStyle, MouseButton, Point, Rect, Size, SolidColorBrush, VAlign, Window, WindowEvent,
+    App, BrushPen, Canvas, CanvasEvent, Child, Color, ColorTheme, Component, ComponentSender,
+    CustomButton, DrawingFontBuilder, FileBox, HAlign, Layoutable, MessageBox, MessageBoxButton,
+    MessageBoxResponse, MessageBoxStyle, MouseButton, Point, Rect, Size, SolidColorBrush, VAlign,
+    Window, WindowEvent,
 };
 
 fn main() {
@@ -135,6 +136,7 @@ impl Component for MainModel {
             _ => None,
         });
         let fut_canvas = self.canvas.start(sender, |e| match e {
+            CanvasEvent::Redraw => Some(MainMessage::Redraw),
             CanvasEvent::MouseMove(p) => Some(MainMessage::MouseMove(p)),
             CanvasEvent::MouseUp(b) => Some(MainMessage::MouseUp(b)),
             _ => None,
@@ -251,12 +253,13 @@ impl Component for MainModel {
         self.state.set_drect(&self.canvas);
 
         let size = self.canvas.size();
+        let palette = Palette::current();
         let mut ctx = self.canvas.context();
-        let brush = SolidColorBrush::new(BLACK);
+        let brush = SolidColorBrush::new(palette.erase);
         ctx.fill_rect(brush, Rect::from_size(size));
 
         let drect = self.state.drect;
-        let brush = SolidColorBrush::new(BACK);
+        let brush = SolidColorBrush::new(palette.back);
         ctx.fill_rect(brush, drect);
 
         let extend = drect.width() / CLIENT_WIDTH;
@@ -273,14 +276,14 @@ impl Component for MainModel {
                 && sample_pos.y >= RADIUS
                 && sample_pos.y <= CLIENT_HEIGHT - RADIUS
             {
-                let brush = SolidColorBrush::new(RED_SAMPLE);
+                let brush = SolidColorBrush::new(palette.red_sample);
                 ctx.fill_ellipse(brush, self.state.ball_rect(sample_pos));
             }
         }
         let bball = if self.state.map.doubled_score() {
-            SolidColorBrush::new(YELLOW_CIRCLE)
+            SolidColorBrush::new(palette.yellow_circle)
         } else {
-            SolidColorBrush::new(RED_BALL)
+            SolidColorBrush::new(palette.red_ball)
         };
         let start_pos = self.state.map.startp();
         let end_shooting = self
@@ -300,7 +303,7 @@ impl Component for MainModel {
                 ctx.fill_ellipse(&bball, self.state.ball_rect(b.pos));
             }
         }
-        let pborder = BrushPen::new(SolidColorBrush::new(GREEN_BORDER), 3.0);
+        let pborder = BrushPen::new(SolidColorBrush::new(palette.green_border), 3.0);
         for (y, row) in self.state.map.balls().iter().enumerate() {
             for (x, t) in row.iter().enumerate() {
                 let cx = x as f64 * SIDE + SIDE / 2.0;
@@ -311,7 +314,11 @@ impl Component for MainModel {
                     BallType::None => {}
                     BallType::Normal(score) => {
                         let fillc = square_color(*score);
-                        let btext = SolidColorBrush::new(if fillc.g > 127 { BACK } else { FORE });
+                        let btext: SolidColorBrush = SolidColorBrush::new(if fillc.g > 127 {
+                            palette.fore_dark
+                        } else {
+                            palette.fore_light
+                        });
                         let bfill = SolidColorBrush::new(fillc);
                         let mut round_rect = Rect::new(
                             Point::new(x as f64 * SIDE + 5.0, y as f64 * SIDE + 5.0),
@@ -333,7 +340,7 @@ impl Component for MainModel {
                         );
                         ctx.fill_ellipse(bcircle, circle_rect);
                         ctx.draw_ellipse(&pborder, circle_rect);
-                        let bfore = SolidColorBrush::new(FORE);
+                        let bfore = SolidColorBrush::new(palette.fore_light);
                         let pfore = BrushPen::new(&bfore, 3.0);
                         match special {
                             Special::New => {
@@ -380,45 +387,108 @@ fn difficulty_str(difficulty: Difficulty) -> &'static str {
     }
 }
 
+fn adjust_color(mut c: Color, is_dark: bool) -> Color {
+    if !is_dark {
+        c.r = (c.r as u16 + 100).min(255) as u8;
+        c.g = (c.g as u16 + 100).min(255) as u8;
+        c.b = (c.b as u16 + 100).min(255) as u8;
+    }
+    c
+}
+
 fn square_color(t: i32) -> Color {
+    let is_dark = ColorTheme::current() == ColorTheme::Dark;
     const POWER: i32 = 4;
     const RANGE: i32 = 256 / POWER;
     let t = t % (RANGE * 5);
     if t < RANGE {
-        Color::new((t * POWER) as u8, 0, 255, 255)
+        adjust_color(Color::new((t * POWER) as u8, 0, 255, 255), is_dark)
     } else if t < RANGE * 2 {
-        Color::new(255, 0, (255 - (t - RANGE) * POWER) as u8, 255)
+        adjust_color(
+            Color::new(255, 0, (255 - (t - RANGE) * POWER) as u8, 255),
+            is_dark,
+        )
     } else if t < RANGE * 3 {
-        Color::new(255, ((t - RANGE * 2) * POWER) as u8, 0, 255)
+        adjust_color(
+            Color::new(255, ((t - RANGE * 2) * POWER) as u8, 0, 255),
+            is_dark,
+        )
     } else if t < RANGE * 4 {
-        Color::new(
-            (255 - (t - RANGE * 3) * POWER) as u8,
-            255,
-            ((t - RANGE * 3) * POWER) as u8,
-            255,
+        adjust_color(
+            Color::new(
+                (255 - (t - RANGE * 3) * POWER) as u8,
+                255,
+                ((t - RANGE * 3) * POWER) as u8,
+                255,
+            ),
+            is_dark,
         )
     } else {
-        Color::new(0, (255 - (t - RANGE * 4) * POWER) as u8, 255, 255)
+        adjust_color(
+            Color::new(0, (255 - (t - RANGE * 4) * POWER) as u8, 255, 255),
+            is_dark,
+        )
     }
 }
 
-const BLACK: Color = Color::new(0, 0, 0, 255);
-const BACK: Color = Color::new(31, 31, 31, 255);
-const FORE: Color = Color::new(223, 223, 223, 255);
-const RED_SAMPLE: Color = Color::new(231, 72, 86, 255);
-const RED_BALL: Color = Color::new(197, 15, 31, 255);
-const GREEN_BORDER: Color = Color::new(22, 198, 12, 255);
-const BLUE_CIRCLE: Color = Color::new(0, 55, 218, 255);
-const YELLOW_CIRCLE: Color = Color::new(193, 156, 0, 255);
-const PURPLE_CIRCLE: Color = Color::new(136, 23, 152, 255);
+struct Palette {
+    erase: Color,
+    back: Color,
+    fore_light: Color,
+    fore_dark: Color,
+    red_sample: Color,
+    red_ball: Color,
+    green_border: Color,
+    blue_circle: Color,
+    yellow_circle: Color,
+    purple_circle: Color,
+}
+
+impl Palette {
+    pub fn current() -> &'static Self {
+        let is_dark = ColorTheme::current() == ColorTheme::Dark;
+        if is_dark {
+            &DARK_PALETTE
+        } else {
+            &LIGHT_PALETTE
+        }
+    }
+}
+
+static DARK_PALETTE: Palette = Palette {
+    erase: Color::new(0, 0, 0, 255),
+    back: Color::new(31, 31, 31, 255),
+    fore_light: Color::new(223, 223, 223, 255),
+    fore_dark: Color::new(31, 31, 31, 255),
+    red_sample: Color::new(231, 72, 86, 255),
+    red_ball: Color::new(197, 15, 31, 255),
+    green_border: Color::new(22, 198, 12, 255),
+    blue_circle: Color::new(0, 55, 218, 255),
+    yellow_circle: Color::new(193, 156, 0, 255),
+    purple_circle: Color::new(136, 23, 152, 255),
+};
+
+static LIGHT_PALETTE: Palette = Palette {
+    erase: Color::new(255, 255, 255, 255),
+    back: Color::new(235, 235, 235, 255),
+    fore_light: Color::new(255, 255, 255, 255),
+    fore_dark: Color::new(31, 31, 31, 255),
+    red_sample: Color::new(255, 122, 136, 255),
+    red_ball: Color::new(247, 65, 81, 255),
+    green_border: Color::new(22, 198, 12, 255),
+    blue_circle: Color::new(50, 105, 255, 255),
+    yellow_circle: Color::new(213, 176, 20, 255),
+    purple_circle: Color::new(186, 73, 202, 255),
+};
 
 fn special_color(s: Special) -> Color {
+    let palette = Palette::current();
     match s {
-        Special::New => BLUE_CIRCLE,
-        Special::Delete => RED_BALL,
-        Special::Random => PURPLE_CIRCLE,
-        Special::RandomOld => RED_SAMPLE,
-        Special::DoubleScore => YELLOW_CIRCLE,
+        Special::New => palette.blue_circle,
+        Special::Delete => palette.red_ball,
+        Special::Random => palette.purple_circle,
+        Special::RandomOld => palette.red_sample,
+        Special::DoubleScore => palette.yellow_circle,
     }
 }
 
