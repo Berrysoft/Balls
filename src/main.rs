@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(let_chains)]
 
-use std::{ffi::OsString, path::Path, time::Duration};
+use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};
 
 use balls::{
     BallType, CLIENT_HEIGHT, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE,
@@ -30,7 +30,7 @@ struct State {
     ticker: Option<MapTicker>,
     drect: Rect,
     mouse: Point,
-    timer_running: bool,
+    timer_running: Rc<Cell<bool>>,
 }
 
 impl State {
@@ -40,7 +40,7 @@ impl State {
             ticker: None,
             drect: Rect::zero(),
             mouse: Point::zero(),
-            timer_running: true,
+            timer_running: Rc::new(Cell::new(false)),
         }
     }
 }
@@ -111,11 +111,12 @@ impl Component for MainModel {
         sender.post(MainMessage::Startup(counter));
 
         let sender = sender.clone();
+        let timer_running = state.timer_running.clone();
         spawn(async move {
             let mut interval = interval(Duration::from_millis(10));
             loop {
                 interval.tick().await;
-                if !sender.post(MainMessage::Tick) {
+                if timer_running.get() && !sender.post(MainMessage::Tick) {
                     break;
                 }
             }
@@ -173,46 +174,47 @@ impl Component for MainModel {
                     if self.state.ticker.is_none() {
                         self.state.ticker =
                             Some(self.state.map.start(self.state.com_point(self.state.mouse)));
+                        self.state.timer_running.set(true);
                     }
                     true
                 }
                 MouseButton::Right => {
                     if self.state.ticker.is_some() {
-                        self.state.timer_running = !self.state.timer_running;
+                        self.state
+                            .timer_running
+                            .set(!self.state.timer_running.get());
                     }
                     true
                 }
                 _ => false,
             },
             MainMessage::Tick => {
-                if self.state.timer_running {
-                    if let Some(mut ticker) = self.state.ticker.take() {
-                        if ticker.tick(&mut self.state.map) {
-                            self.state.ticker = Some(ticker);
+                if let Some(mut ticker) = self.state.ticker.take() {
+                    if ticker.tick(&mut self.state.map) {
+                        self.state.ticker = Some(ticker);
+                    } else {
+                        ticker.consume(&mut self.state.map);
+                        if self.state.map.reset() {
+                            self.state
+                                .map
+                                .update_sample(self.state.com_point(self.state.mouse));
                         } else {
-                            ticker.consume(&mut self.state.map);
-                            if self.state.map.reset() {
-                                self.state
-                                    .map
-                                    .update_sample(self.state.com_point(self.state.mouse));
-                            } else {
-                                let difficulty = self.state.map.difficulty();
-                                let balls_num = self.state.map.balls_num();
-                                let score = self.state.map.score();
-                                if !show_stop(&self.window, difficulty, balls_num, score).await
-                                    || !init_balls(&self.window, &mut self.state).await
-                                {
-                                    sender.output(());
-                                }
+                            let difficulty = self.state.map.difficulty();
+                            let balls_num = self.state.map.balls_num();
+                            let score = self.state.map.score();
+                            if !show_stop(&self.window, difficulty, balls_num, score).await
+                                || !init_balls(&self.window, &mut self.state).await
+                            {
+                                sender.output(());
                             }
                         }
-                        return true;
                     }
+                    return true;
                 }
                 false
             }
             MainMessage::Close => {
-                let running = std::mem::replace(&mut self.state.timer_running, false);
+                let running = self.state.timer_running.replace(false);
 
                 match show_close(&self.window, &mut self.state).await {
                     ShowCloseResult::Close => {
@@ -220,14 +222,14 @@ impl Component for MainModel {
                         false
                     }
                     ShowCloseResult::Cancel => {
-                        self.state.timer_running = running;
+                        self.state.timer_running.set(running);
                         false
                     }
                     ShowCloseResult::Retry => {
                         if init_balls(&self.window, &mut self.state).await {
                             true
                         } else {
-                            self.state.timer_running = running;
+                            self.state.timer_running.set(running);
                             false
                         }
                     }
@@ -594,7 +596,7 @@ async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State)
     if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
         map.update_sample(state.com_point(state.mouse));
         state.map = map;
-        state.timer_running = ticker.is_none();
+        state.timer_running.set(ticker.is_none());
         state.ticker = ticker;
         true
     } else {
