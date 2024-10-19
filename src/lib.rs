@@ -107,7 +107,7 @@ impl Ball {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Map {
     map: [[BallType; COLUMNS]; ROWS],
     difficulty: Difficulty,
@@ -140,7 +140,27 @@ bitflags! {
     }
 }
 
+impl Default for Map {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Map {
+    pub fn new() -> Self {
+        Self {
+            map: Default::default(),
+            difficulty: Difficulty::default(),
+            rng: ThreadRng::default(),
+            score: 0,
+            start: CLIENT_WIDTH / 2.0,
+            startv: Vector::zero(),
+            sample: Point::zero(),
+            balls_num: 0,
+            doubled_score: false,
+        }
+    }
+
     pub fn init(&mut self, difficulty: Difficulty) {
         self.difficulty = difficulty;
         self.balls_num = 1;

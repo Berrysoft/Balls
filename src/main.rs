@@ -214,12 +214,24 @@ impl Component for MainModel {
             MainMessage::Close => {
                 let running = std::mem::replace(&mut self.state.timer_running, false);
 
-                if !show_close(&self.window, &mut self.state).await {
-                    sender.output(());
+                match show_close(&self.window, &mut self.state).await {
+                    ShowCloseResult::Close => {
+                        sender.output(());
+                        false
+                    }
+                    ShowCloseResult::Cancel => {
+                        self.state.timer_running = running;
+                        false
+                    }
+                    ShowCloseResult::Retry => {
+                        if init_balls(&self.window, &mut self.state).await {
+                            true
+                        } else {
+                            self.state.timer_running = running;
+                            false
+                        }
+                    }
                 }
-
-                self.state.timer_running = running;
-                false
             }
         }
     }
@@ -528,8 +540,7 @@ async fn init_balls(window: &Window, state: &mut State) -> bool {
 }
 
 async fn show_stop(window: &Window, difficulty: Difficulty, balls_num: usize, score: u64) -> bool {
-    const YES: u16 = 100;
-    const NO: u16 = 101;
+    const RETRY: u16 = 100;
     let res = MessageBox::new()
         .title("二维弹球")
         .instruction("游戏结束")
@@ -539,26 +550,41 @@ async fn show_stop(window: &Window, difficulty: Difficulty, balls_num: usize, sc
             balls_num,
             score,
         ))
-        .custom_button(CustomButton::new(YES, "重新开始"))
-        .custom_button(CustomButton::new(NO, "关闭"))
+        .buttons(MessageBoxButton::Close)
+        .custom_button(CustomButton::new(RETRY, "重新开始"))
         .style(MessageBoxStyle::Info)
         .show(Some(window))
         .await;
-    res == MessageBoxResponse::Custom(YES)
+    res == MessageBoxResponse::Custom(RETRY)
 }
 
-async fn show_close(window: &Window, state: &mut State) -> bool {
+enum ShowCloseResult {
+    Close,
+    Cancel,
+    Retry,
+}
+
+async fn show_close(window: &Window, state: &mut State) -> ShowCloseResult {
+    const RETRY: u16 = 100;
     let res = MessageBox::new()
         .title("二维弹球")
         .message("游戏尚未结束，是否存档？")
         .buttons(MessageBoxButton::Yes | MessageBoxButton::No | MessageBoxButton::Cancel)
+        .custom_button(CustomButton::new(RETRY, "重新开始"))
         .style(MessageBoxStyle::Info)
         .show(Some(window))
         .await;
     match res {
-        MessageBoxResponse::Yes => !show_save(window, state).await,
-        MessageBoxResponse::Cancel => true,
-        _ => false,
+        MessageBoxResponse::Yes => {
+            if show_save(window, state).await {
+                ShowCloseResult::Close
+            } else {
+                ShowCloseResult::Cancel
+            }
+        }
+        MessageBoxResponse::No => ShowCloseResult::Close,
+        MessageBoxResponse::Custom(RETRY) => ShowCloseResult::Retry,
+        _ => ShowCloseResult::Cancel,
     }
 }
 
