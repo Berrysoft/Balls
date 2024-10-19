@@ -521,6 +521,7 @@ async fn init_balls(window: &Window, state: &mut State) -> bool {
 减号使当前球消失；美元符号使本轮得分加倍。
 按右键暂停。请不要过于依赖示例球。"#,
         )
+        .buttons(MessageBoxButton::Cancel)
         .custom_button(CustomButton::new(SIMPLE, "简单"))
         .custom_button(CustomButton::new(NORMAL, "正常"))
         .custom_button(CustomButton::new(HARD, "困难"))
