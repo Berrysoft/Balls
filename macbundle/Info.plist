@@ -17,9 +17,9 @@
 	<string>balls</string>
 
 	<key>CFBundleVersion</key>
-	<string>3.1.0</string>
+	<string>3.1.1</string>
 	<key>CFBundleShortVersionString</key>
-	<string>3.1.0</string>
+	<string>3.1.1</string>
 
 	<key>LSMinimumSystemVersion</key>
 	<string>11.7</string>
