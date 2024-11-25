@@ -156,9 +156,9 @@ dependencies = [
 
 [[package]]
 name = "compio"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64126a616f93d2ca178875a941da3917fc387b62af216c70bd714b5d2ed5259a"
+checksum = "bb5dcaed4ddf9ebe6824624cc58db7297bdf7340edc90ef49d44bfe6d3173bea"
 dependencies = [
  "compio-buf",
  "compio-dispatcher",
@@ -945,9 +945,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.15.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a9bfc1af68b1726ea47d3d5109de126281def866b33970e10fbab11b5dafab3"
+checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 
 [[package]]
 name = "heck"
