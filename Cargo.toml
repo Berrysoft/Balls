@@ -15,6 +15,7 @@ compio = { version = "0.13.0", features = [
     "time",
     "bytes",
 ] }
+compio-driver = { version = "0.6.1", features = ["iocp-wait-packet"] }
 futures-util = "0.3.30"
 paste = "1.0.15"
 rand = { version = "0.8.5", features = ["nightly"] }

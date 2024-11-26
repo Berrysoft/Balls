@@ -35,6 +35,7 @@ version = "3.2.1"
 dependencies = [
  "bitflags",
  "compio",
+ "compio-driver",
  "futures-util",
  "paste",
  "rand",
@@ -331,9 +332,9 @@ dependencies = [
 
 [[package]]
 name = "compio-runtime"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "895133a2ef34d5ffd1375247814036cfe5b52fc2eeb06a31bf23a90b9a173f94"
+checksum = "1804118be8643659fa788229429a8d910b012e5e703adb18ee7f1447f0072fe8"
 dependencies = [
  "async-task",
  "cfg-if",
@@ -984,9 +985,9 @@ dependencies = [
 
 [[package]]
 name = "io-uring"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c9c844e08c94e8558389fb9b8944cb99fc697e231c975e4274b42bc99e0625b"
+checksum = "4c96e3f73fd5acaee84ecfabb4414875b688667b5276372cdeff64444fab81ee"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -1022,9 +1023,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.164"
+version = "0.2.165"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "433bfe06b8c75da9b2e3fbea6e5329ff87748f0b144ef75306e674c3f6f7c13f"
+checksum = "fcb4d3d38eab6c5239a362fa8bae48c03baf980a6e7079f063942d563ef3533e"
 
 [[package]]
 name = "libm"
@@ -1822,9 +1823,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.32"
+version = "0.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c06d3da6113f116aaee68e4d601191614c9053067f9ab7f6edbcb161237daa54"
+checksum = "e672c95779cf947c5311f83787af4fa8fffd12fb27e4993211a84bdfd9610f9c"
 dependencies = [
  "once_cell",
 ]
