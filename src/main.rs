@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(let_chains)]
+#![feature(path_add_extension)]
 
 use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};
 
@@ -630,7 +631,17 @@ async fn show_save(window: &Window, state: &mut State) -> bool {
         .add_filter(("存档文件", "*.balls"))
         .save(Some(window))
         .await;
-    if let Some(filename) = filename {
+    if let Some(mut filename) = filename {
+        match filename.extension() {
+            None => {
+                filename.set_extension("balls");
+            }
+            Some(ex) => {
+                if ex != "balls" {
+                    filename.add_extension("balls");
+                }
+            }
+        }
         let data = state.map.to_vec(state.ticker.as_ref());
         let mut file = File::create(filename).await.unwrap();
         file.write_all_at(data, 0).await.unwrap();
