@@ -414,7 +414,7 @@ impl Map {
             Difficulty::Hard => Normal::new(fbnum * 1.5, fbnum / 2.0).unwrap(),
             Difficulty::Compete => Normal::new(fbnum.powf(1.1), fbnum / 3.0).unwrap(),
         };
-        let uni: UniformFloat<f64> = UniformFloat::new(0.0, 1.0);
+        let uni: UniformFloat<f64> = UniformFloat::new(0.0, 1.0).unwrap();
         for c in 0..COLUMNS {
             if uni.sample(&mut self.rng) < 0.6 {
                 let v = distr.sample(&mut self.rng).round() as i32;
@@ -425,23 +425,23 @@ impl Map {
             }
             self.map[0][c] = BallType::None;
         }
-        let idist: UniformInt<usize> = UniformInt::new(0, COLUMNS);
+        let idist: UniformInt<u64> = UniformInt::new(0, COLUMNS as u64).unwrap();
         if uni.sample(&mut self.rng) < 0.5 {
-            let c = idist.sample(&mut self.rng);
+            let c = idist.sample(&mut self.rng) as usize;
             self.map[0][c] = BallType::Special(Special::Random);
         }
         if uni.sample(&mut self.rng) < 0.2 {
-            let c = idist.sample(&mut self.rng);
+            let c = idist.sample(&mut self.rng) as usize;
             self.map[0][c] = BallType::Special(Special::Delete);
         }
         if uni.sample(&mut self.rng) < 0.2 {
-            let c = idist.sample(&mut self.rng);
+            let c = idist.sample(&mut self.rng) as usize;
             self.map[0][c] = BallType::Special(Special::DoubleScore);
         }
         if self.balls_num < (i32::MAX / 2) as usize
             && (self.difficulty == Difficulty::Compete || uni.sample(&mut self.rng) < 0.5)
         {
-            let c = idist.sample(&mut self.rng);
+            let c = idist.sample(&mut self.rng) as usize;
             self.map[0][c] = BallType::Special(Special::New);
         }
         true
