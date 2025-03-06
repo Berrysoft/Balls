@@ -139,10 +139,14 @@ jobs:
   - script: |
       cargo +nightly build --release --target x86_64-apple-darwin --features objc-static
     displayName: "Build x64"
+    env:
+      RUSTFLAGS: -C link-arg=-fuse-ld=lld
 
   - script: |
-      cargo +nightly build --release --target aarch64-apple-darwin
+      cargo +nightly build --release --target aarch64-apple-darwin --features objc-static
     displayName: "Build arm64"
+    env:
+      RUSTFLAGS: -C link-arg=-fuse-ld=lld
 
   - script: |
       macbundle/bundle.sh
