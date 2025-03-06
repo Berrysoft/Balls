@@ -18,7 +18,7 @@ jobs:
     vmImage: windows-latest
   
   steps:
-  - script: |
+  - pwsh: |
       rustup toolchain install nightly
       rustup +nightly target add $(target)
       cargo +nightly build --release --target $(target)
@@ -127,13 +127,14 @@ jobs:
 
 - job: Build_Mac
   pool:
-    vmImage: 'macOS-13'
+    vmImage: 'macOS-15'
   
   steps:
   - script: |
       rustup toolchain install nightly
       rustup +nightly target add x86_64-apple-darwin
       rustup +nightly target add aarch64-apple-darwin
+      brew install lld
     displayName: "Install toolchain"
 
   - script: |
