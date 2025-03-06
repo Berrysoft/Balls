@@ -19,7 +19,7 @@ jobs:
   
   steps:
   - pwsh: |
-      rustup toolchain install nightly
+      rustup toolchain install nightly --no-self-update
       rustup +nightly target add $(target)
       cargo +nightly build --release --target $(target)
     displayName: "Build"
