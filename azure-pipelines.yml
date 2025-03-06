@@ -142,12 +142,14 @@ jobs:
     displayName: "Build x64"
     env:
       RUSTFLAGS: -C link-arg=-fuse-ld=lld
+      MACOSX_DEPLOYMENT_TARGET: 15.2
 
   - script: |
       cargo +nightly build --release --target aarch64-apple-darwin --features objc-static
     displayName: "Build arm64"
     env:
       RUSTFLAGS: -C link-arg=-fuse-ld=lld
+      MACOSX_DEPLOYMENT_TARGET: 15.2
 
   - script: |
       macbundle/bundle.sh
