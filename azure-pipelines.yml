@@ -141,7 +141,7 @@ jobs:
     displayName: "Build x64"
 
   - script: |
-      cargo +nightly build --release --target aarch64-apple-darwin --features objc-static
+      cargo +nightly build --release --target aarch64-apple-darwin
     displayName: "Build arm64"
 
   - script: |
