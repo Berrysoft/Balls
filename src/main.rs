@@ -165,9 +165,11 @@ impl Component for MainModel {
                 {
                     if !open_record(&self.window, &path, &mut self.state).await {
                         sender.output(());
+                        return false;
                     }
                 } else if !init_balls(&self.window, &mut self.state).await {
                     sender.output(());
+                    return false;
                 }
                 self.window.show();
                 true
