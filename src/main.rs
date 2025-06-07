@@ -18,7 +18,7 @@ use winio::{
     App, BrushPen, Canvas, CanvasEvent, Child, Color, ColorTheme, Component, ComponentSender,
     CustomButton, DrawingFontBuilder, FileBox, HAlign, Layoutable, MessageBox, MessageBoxButton,
     MessageBoxResponse, MessageBoxStyle, MouseButton, Point, Rect, Size, SolidColorBrush, VAlign,
-    Window, WindowEvent,
+    Visible, Window, WindowEvent,
 };
 
 fn main() {
@@ -84,6 +84,7 @@ struct MainModel {
 }
 
 enum MainMessage {
+    Noop,
     Startup(Option<OsString>),
     Tick,
     Close,
@@ -132,22 +133,31 @@ impl Component for MainModel {
     }
 
     async fn start(&mut self, sender: &ComponentSender<Self>) {
-        let fut_window = self.window.start(sender, |e| match e {
-            WindowEvent::Close => Some(MainMessage::Close),
-            WindowEvent::Resize => Some(MainMessage::Redraw),
-            _ => None,
-        });
-        let fut_canvas = self.canvas.start(sender, |e| match e {
-            CanvasEvent::Redraw => Some(MainMessage::Redraw),
-            CanvasEvent::MouseMove(p) => Some(MainMessage::MouseMove(p)),
-            CanvasEvent::MouseUp(b) => Some(MainMessage::MouseUp(b)),
-            _ => None,
-        });
+        let fut_window = self.window.start(
+            sender,
+            |e| match e {
+                WindowEvent::Close => Some(MainMessage::Close),
+                WindowEvent::Resize => Some(MainMessage::Redraw),
+                _ => None,
+            },
+            || MainMessage::Noop,
+        );
+        let fut_canvas = self.canvas.start(
+            sender,
+            |e| match e {
+                CanvasEvent::Redraw => Some(MainMessage::Redraw),
+                CanvasEvent::MouseMove(p) => Some(MainMessage::MouseMove(p)),
+                CanvasEvent::MouseUp(b) => Some(MainMessage::MouseUp(b)),
+                _ => None,
+            },
+            || MainMessage::Noop,
+        );
         futures_util::future::join(fut_window, fut_canvas).await;
     }
 
     async fn update(&mut self, message: Self::Message, sender: &ComponentSender<Self>) -> bool {
         match message {
+            MainMessage::Noop => false,
             MainMessage::Redraw => true,
             MainMessage::Startup(p) => {
                 if let Some(path) = p
@@ -159,6 +169,7 @@ impl Component for MainModel {
                 } else if !init_balls(&self.window, &mut self.state).await {
                     sender.output(());
                 }
+                self.window.show();
                 true
             }
             MainMessage::MouseMove(p) => {
