@@ -30,6 +30,7 @@ qt = ["winio/qt"]
 gtk = ["winio/gtk"]
 
 objc-static = ["winio/objc-static"]
+vc-ltl = []
 
 [profile.release]
 lto = true
