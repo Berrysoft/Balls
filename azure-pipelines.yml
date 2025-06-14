@@ -19,10 +19,8 @@ jobs:
   
   steps:
   - pwsh: |
-      wget https://globalcdn.nuget.org/packages/vc-ltl.5.2.1.nupkg?packageVersion=5.2.1 -O vc-ltl.nupkg
-      mkdir vc-ltl
-      cd vc-ltl
-      unzip ../vc-ltl.nupkg
+      Invoke-WebRequest -Uri "https://globalcdn.nuget.org/packages/vc-ltl.5.2.1.nupkg?packageVersion=5.2.1" -OutFile "vc-ltl.nupkg"
+      Expand-Archive vc-ltl.nupkg -DestinationPath vc-ltl
     displayName: "Download VC-LTL"
 
   - pwsh: |
