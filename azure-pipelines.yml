@@ -120,8 +120,12 @@ jobs:
     displayName: "Install cargo-deb"
 
   - script: |
-      cargo +nightly deb --target $(target) -o $(Build.ArtifactStagingDirectory)/balls.qt.$(ubuntuDist).$(arch).deb
+      ln -s ~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld ~/.cargo/bin/ld.lld
+      export PATH=~/.cargo/bin:$PATH
+      cargo +nightly deb --target $(target) --profile release -o $(Build.ArtifactStagingDirectory)/balls.qt.$(ubuntuDist).$(arch).deb
     displayName: "Build"
+    env:
+      RUSTFLAGS: "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-flto -Clink-arg=-fuse-ld=lld"
 
   - task: PublishBuildArtifacts@1
     inputs:
