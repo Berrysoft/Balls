@@ -22,7 +22,7 @@ use winio::{
 };
 
 fn main() {
-    App::new().run::<MainModel>(std::env::args_os().nth(1));
+    App::new_with_name("io.github.berrysoft.balls").run::<MainModel>(std::env::args_os().nth(1));
 }
 
 #[derive(Debug)]
