@@ -1674,6 +1674,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04dc19736151f35336d325007ac991178d504a119863a2fcb3758cdb5e52c50d"
 
 [[package]]
+name = "slim-detours-sys"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41ba9f62291b400e9ba91690a77422b54457958ceaa08e0af9a6cd12b3030ac9"
+dependencies = [
+ "cc",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
 name = "slotmap"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1729,6 +1739,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "sync-unsafe-cell"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8deaecba5382c095cb432cd1e21068dadb144208f057b13720e76bf89749beb4"
 
 [[package]]
 name = "system-deps"
@@ -2356,6 +2372,8 @@ dependencies = [
  "rgb",
  "scoped-tls",
  "slab",
+ "slim-detours-sys",
+ "sync-unsafe-cell",
  "taffy",
  "widestring",
  "windows",
