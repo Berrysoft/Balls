@@ -146,7 +146,6 @@ impl Component for MainModel {
                 WindowEvent::Resize => MainMessage::Redraw,
             },
             self.canvas => {
-                CanvasEvent::Redraw => MainMessage::Redraw,
                 CanvasEvent::MouseMove(p) => MainMessage::MouseMove(p),
                 CanvasEvent::MouseUp(b) => MainMessage::MouseUp(b),
             }
