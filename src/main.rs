@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![feature(let_chains)]
 #![feature(path_add_extension)]
 
 use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};

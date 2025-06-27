@@ -1,7 +1,7 @@
 [package]
 name = "balls"
 version = "3.2.4"
-edition = "2021"
+edition = "2024"
 description = "二维弹球"
 authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
 license = "MIT"
