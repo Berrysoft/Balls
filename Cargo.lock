@@ -66,9 +66,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.18.1"
+version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793db76d6187cd04dff33004d8e6c9cc4e05cd330500379d2394209271b4aeee"
+checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
 
 [[package]]
 name = "bytemuck"
@@ -978,9 +978,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.9.0"
+version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
+checksum = "fe4cd85333e22411419a0bcae1297d25e58c9443848b11dc6a86fefe8c78a661"
 dependencies = [
  "equivalent",
  "hashbrown",
@@ -2369,7 +2369,9 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winio"
-version = "0.7.0"
+version = "0.7.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea39308bb67e1a51065e684c7145c5796e422c14b73a3dc89921b7ae6915b0d8"
 dependencies = [
  "block2",
  "cfg-if",
@@ -2391,7 +2393,6 @@ dependencies = [
  "objc2-foundation",
  "objc2-quartz-core",
  "objc2-uniform-type-identifiers",
- "once_cell",
  "pangocairo",
  "paste",
  "qt-build-utils",
