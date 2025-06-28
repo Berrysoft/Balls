@@ -19,7 +19,10 @@ compio-driver = { version = "0.8.0", features = ["iocp-wait-packet"] }
 futures-util = "0.3.30"
 rand = { version = "0.9.0", features = ["nightly"] }
 rand_distr = "0.5.1"
-winio = { version = "0.7.0-beta.1", default-features = false, features = ["nightly", "windows-dark-mode"] }
+winio = { version = "0.7.0-beta.2", default-features = false, features = [
+    "nightly",
+    "windows-dark-mode",
+] }
 
 [build-dependencies]
 winres = "0.1.12"
@@ -38,7 +41,7 @@ codegen-units = 1
 
 [package.metadata.winres]
 FileDescription = "二维弹球"
-LegalCopyright = "Copyright (c) 2018-2024 Berrysoft"
+LegalCopyright = "Copyright (c) 2018-2025 Berrysoft"
 
 [package.metadata.deb]
 assets = [
@@ -54,8 +57,7 @@ assets = [
     ],
     [
         "balls.desktop",
-        "usr/share/applications/balls.desktop",
+        "usr/share/applications/io.github.berrysoft.balls.desktop",
         "755",
     ],
 ]
-
