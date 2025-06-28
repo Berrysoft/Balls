@@ -122,7 +122,9 @@ jobs:
   - script: |
       ln -s ~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld ~/.cargo/bin/ld.lld
       export RUSTFLAGS="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-flto -Clink-arg=-fuse-ld=$HOME/.cargo/bin/ld.lld"
-      cargo +nightly deb --target $(target) --profile release --features clang-lto -o $(Build.ArtifactStagingDirectory)/balls.qt.$(ubuntuDist).$(arch).deb
+      export CXX="clang++"
+      export CXXFLAGS="-flto"
+      cargo +nightly deb --target $(target) --profile release -o $(Build.ArtifactStagingDirectory)/balls.qt.$(ubuntuDist).$(arch).deb
     displayName: "Build"
 
   - task: PublishBuildArtifacts@1

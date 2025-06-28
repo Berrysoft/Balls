@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![feature(let_chains)]
 #![feature(path_add_extension)]
 
 use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};
@@ -22,7 +21,7 @@ use winio::{
 };
 
 fn main() {
-    App::new_with_name("io.github.berrysoft.balls").run::<MainModel>(std::env::args_os().nth(1));
+    App::new("io.github.berrysoft.balls").run::<MainModel>(std::env::args_os().nth(1));
 }
 
 #[derive(Debug)]
@@ -121,11 +120,11 @@ impl Component for MainModel {
         let sender = sender.clone();
         let timer_running = state.timer_running.clone();
         spawn(async move {
-            let mut interval = interval(Duration::from_millis(10));
+            let mut interval = interval(Duration::from_millis(15));
             loop {
                 interval.tick().await;
-                if timer_running.get() && !sender.post(MainMessage::Tick) {
-                    break;
+                if timer_running.get() {
+                    sender.post(MainMessage::Tick);
                 }
             }
         })
@@ -138,7 +137,7 @@ impl Component for MainModel {
         }
     }
 
-    async fn start(&mut self, sender: &ComponentSender<Self>) {
+    async fn start(&mut self, sender: &ComponentSender<Self>) -> ! {
         start! {
             sender, default: MainMessage::Noop,
             self.window => {
@@ -146,7 +145,6 @@ impl Component for MainModel {
                 WindowEvent::Resize => MainMessage::Redraw,
             },
             self.canvas => {
-                CanvasEvent::Redraw => MainMessage::Redraw,
                 CanvasEvent::MouseMove(p) => MainMessage::MouseMove(p),
                 CanvasEvent::MouseUp(b) => MainMessage::MouseUp(b),
             }
