@@ -1,7 +1,7 @@
 [package]
 name = "balls"
 version = "3.2.4"
-edition = "2021"
+edition = "2024"
 description = "二维弹球"
 authors = ["Berrysoft <Strawberry_Str@hotmail.com>"]
 license = "MIT"
@@ -19,7 +19,10 @@ compio-driver = { version = "0.8.0", features = ["iocp-wait-packet"] }
 futures-util = "0.3.30"
 rand = { version = "0.9.0", features = ["nightly"] }
 rand_distr = "0.5.1"
-winio = { version = "0.6.0", default-features = false, features = ["nightly", "windows-dark-mode"] }
+winio = { version = "0.7.0", default-features = false, features = [
+    "nightly",
+    "win32-dark-mode",
+] }
 
 [build-dependencies]
 winres = "0.1.12"
@@ -30,7 +33,6 @@ qt = ["winio/qt"]
 gtk = ["winio/gtk"]
 
 objc-static = ["winio/objc-static"]
-clang-lto = ["winio/clang-lto"]
 vc-ltl = []
 
 [profile.release]
@@ -39,7 +41,7 @@ codegen-units = 1
 
 [package.metadata.winres]
 FileDescription = "二维弹球"
-LegalCopyright = "Copyright (c) 2018-2024 Berrysoft"
+LegalCopyright = "Copyright (c) 2018-2025 Berrysoft"
 
 [package.metadata.deb]
 assets = [
@@ -55,7 +57,7 @@ assets = [
     ],
     [
         "balls.desktop",
-        "usr/share/applications/balls.desktop",
+        "usr/share/applications/io.github.berrysoft.balls.desktop",
         "755",
     ],
 ]

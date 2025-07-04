@@ -7,7 +7,7 @@ use rand_distr::{
     Distribution, Normal,
     uniform::{UniformFloat, UniformInt, UniformSampler},
 };
-use winio::{Angle, Point, Vector};
+use winio::primitive::{Angle, Point, Vector};
 
 pub const COLUMNS: usize = 6;
 pub const ROWS: usize = 8;
