@@ -13,12 +13,7 @@ use compio::{
     runtime::spawn,
     time::interval,
 };
-use winio::{
-    App, BrushPen, Canvas, CanvasEvent, Child, Color, ColorTheme, Component, ComponentSender,
-    CustomButton, DrawingFontBuilder, FileBox, HAlign, Layoutable, MessageBox, MessageBoxButton,
-    MessageBoxResponse, MessageBoxStyle, Monitor, MouseButton, Point, Rect, Size, SolidColorBrush,
-    VAlign, Visible, Window, WindowEvent, init, start,
-};
+use winio::prelude::*;
 
 fn main() {
     App::new("io.github.berrysoft.balls").run::<MainModel>(std::env::args_os().nth(1));
