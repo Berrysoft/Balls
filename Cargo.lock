@@ -113,9 +113,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.28"
+version = "1.2.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ad45f4f74e4e20eaa392913b7b33a7091c87e59628f4dd27888205ad888843c"
+checksum = "5c1599538de2394445747c8cf7935946e3cc27e9625f889d979bfb2aaf569362"
 dependencies = [
  "jobserver",
  "libc",
@@ -1298,16 +1298,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "objc2-core-video"
+name = "objc2-core-text"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1989c3e76c7e978cab0ba9e6f4961cd00ed14ca21121444cc26877403bfb6303"
+checksum = "3ba833d4a1cb1aac330f8c973fd92b6ff1858e4aef5cdd00a255eefb28022fb5"
 dependencies = [
  "bitflags",
+ "block2",
+ "libc",
  "objc2",
  "objc2-core-foundation",
  "objc2-core-graphics",
- "objc2-io-surface",
 ]
 
 [[package]]
@@ -1364,14 +1365,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ffb6a0cd5f182dc964334388560b12a57f7b74b3e2dec5e2722aa2dfb2ccd5"
 dependencies = [
  "bitflags",
- "block2",
- "libc",
  "objc2",
- "objc2-core-foundation",
- "objc2-core-graphics",
- "objc2-core-video",
  "objc2-foundation",
- "objc2-metal",
 ]
 
 [[package]]
@@ -2533,12 +2528,13 @@ dependencies = [
 
 [[package]]
 name = "winio-ui-app-kit"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60f1e035ee74d5ebbff792b7bedf466f5315fdde1f66a8602e934c265188d927"
+checksum = "5ad699c5b48ffb636418924cce1827399ae137fae6868b69d58994bc02bb0e32"
 dependencies = [
  "block2",
  "compio",
+ "compio-log",
  "image",
  "inherit-methods-macro",
  "local-sync",
@@ -2546,8 +2542,8 @@ dependencies = [
  "objc2-app-kit",
  "objc2-core-foundation",
  "objc2-core-graphics",
+ "objc2-core-text",
  "objc2-foundation",
- "objc2-quartz-core",
  "objc2-uniform-type-identifiers",
  "scoped-tls",
  "winio-callback",
@@ -2575,9 +2571,9 @@ dependencies = [
 
 [[package]]
 name = "winio-ui-qt"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7231a0de54cea40b7a2675e32447c5969095c255b32f6d62ed170fe11f16c6d0"
+checksum = "74582c5f05207c48ceb2c8b161f078d6d29968f4202567a0f0c2dc087f69f20d"
 dependencies = [
  "cxx",
  "cxx-build",
