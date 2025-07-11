@@ -146,18 +146,18 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "clap"
-version = "4.5.40"
+version = "4.5.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40b6887a1d8685cebccf115538db5c0efe625ccac9696ad45c409d96566e910f"
+checksum = "be92d32e80243a54711e5d7ce823c35c41c9d929dc4ab58e1276f625841aadf9"
 dependencies = [
  "clap_builder",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.5.40"
+version = "4.5.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0c66c08ce9f0c698cbce5c0279d0bb6ac936d8674174fe48f736533b964f59e"
+checksum = "707eab41e9622f9139419d573eca0900137718000c517d47da73045f54331c3d"
 dependencies = [
  "anstyle",
  "clap_lex",
@@ -554,14 +554,14 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "embed-resource"
-version = "3.0.4"
+version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0963f530273dc3022ab2bdc3fcd6d488e850256f2284a82b7413cb9481ee85dd"
+checksum = "4c6d81016d6c977deefb2ef8d8290da019e27cc26167e102185da528e6c0ab38"
 dependencies = [
  "cc",
  "memchr",
  "rustc_version",
- "toml 0.8.23",
+ "toml 0.9.1",
  "vswhom",
  "winreg",
 ]
@@ -1387,6 +1387,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
+name = "oneshot"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4ce411919553d3f9fa53a0880544cda985a112117a0444d5ff1e870a893d6ea"
+
+[[package]]
 name = "os_pipe"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1650,9 +1656,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.28"
+version = "0.23.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7160e3e10bf4535308537f3c4e1641468cd0e485175d6163087c0393c7d46643"
+checksum = "2491382039b29b9b11ff08b76ff6c97cf287671dbb74f0be44bda389fffe9bd1"
 dependencies = [
  "log",
  "once_cell",
@@ -1675,9 +1681,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.3"
+version = "0.103.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4a72fe2bcf7a6ac6fd7d0b9e5cb68aeb7d4c0a0271730218b3e92d43b4eb435"
+checksum = "0a17884ae0c1b773f1ccd2bd4a8c72f16da897310a98b0e84bf349ad5ead92fc"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -1715,6 +1721,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
 
 [[package]]
+name = "send_wrapper"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
+
+[[package]]
 name = "serde"
 version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1739,6 +1751,15 @@ name = "serde_spanned"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40734c41988f7306bb04f0ecf60ec0f3f1caa34290e4e8ea471dcd3346483b83"
 dependencies = [
  "serde",
 ]
@@ -1956,9 +1977,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
 dependencies = [
  "serde",
- "serde_spanned",
- "toml_datetime",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
  "toml_edit",
+]
+
+[[package]]
+name = "toml"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0207d6ed1852c2a124c1fbec61621acb8330d2bf969a5d0643131e9affd985a5"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned 1.0.0",
+ "toml_datetime 0.7.0",
+ "toml_parser",
+ "toml_writer",
+ "winnow",
 ]
 
 [[package]]
@@ -1971,6 +2007,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml_datetime"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bade1c3e902f58d73d3f294cd7f20391c1cb2fbcb643b73566bc773971df91e3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "toml_edit"
 version = "0.22.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1978,17 +2023,25 @@ checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
 dependencies = [
  "indexmap",
  "serde",
- "serde_spanned",
- "toml_datetime",
- "toml_write",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
  "winnow",
 ]
 
 [[package]]
-name = "toml_write"
-version = "0.1.2"
+name = "toml_parser"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
+checksum = "b5c1c469eda89749d2230d8156a5969a69ffe0d6d01200581cdc6110674d293e"
+dependencies = [
+ "winnow",
+]
+
+[[package]]
+name = "toml_writer"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b679217f2848de74cabd3e8fc5e6d66f40b7da40f8e1954d92054d9010690fd5"
 
 [[package]]
 name = "tracing"
@@ -2440,9 +2493,9 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winio"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "370858ee776a5044aff42a378a8608fd8b82ab5faffc9e81fa5618ebed3e8538"
+checksum = "2225df0979ee5401872e2c0c51fa8b00c1dd093fa53a0013653f514736689a6a"
 dependencies = [
  "cfg-if",
  "compio",
@@ -2458,6 +2511,7 @@ dependencies = [
  "winio-ui-gtk",
  "winio-ui-qt",
  "winio-ui-win32",
+ "winio-ui-winui",
 ]
 
 [[package]]
@@ -2483,15 +2537,16 @@ dependencies = [
 
 [[package]]
 name = "winio-handle"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01b442ee90eb0e4c74ca3beecfee08a7e09bce2bd80076958162f799ea26bba0"
+checksum = "f7337217259ea07f4f53fb45ba370902db9a6f625e34a9ee7cbca5250b68adba"
 dependencies = [
  "cfg-if",
  "gtk4",
  "objc2",
  "objc2-app-kit",
  "windows-sys 0.60.2",
+ "winio-winui3",
 ]
 
 [[package]]
@@ -2528,9 +2583,9 @@ dependencies = [
 
 [[package]]
 name = "winio-ui-app-kit"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94e688302784d9920403e174f3b63405a1375532d1162a0f5d9199fa83c6ee13"
+checksum = "db0a9fbd4e5c9a933a19523b4de7666ff7b02c49d2378e504b4bb80df62b33c1"
 dependencies = [
  "block2",
  "compio",
@@ -2590,19 +2645,36 @@ dependencies = [
 
 [[package]]
 name = "winio-ui-win32"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aae222b5574169567b2cb42ba338ef7d02d3fc8804c1d5db66f2cdf03c669c1"
+checksum = "c749caa22b221d853200fa4d19e256e4d63a43aebbed78e3ad2fbc9e02493663"
 dependencies = [
- "cfg-if",
  "compio",
  "compio-log",
- "embed-resource",
  "futures-util",
  "image",
  "inherit-methods-macro",
  "scoped-tls",
  "slab",
+ "widestring",
+ "windows",
+ "windows-sys 0.60.2",
+ "winio-handle",
+ "winio-pollable",
+ "winio-primitive",
+ "winio-ui-windows-common",
+]
+
+[[package]]
+name = "winio-ui-windows-common"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b983f5b7782b40814ce07eed97bf15703226720a06bb0a7aa1b9b5390e1aaf"
+dependencies = [
+ "cfg-if",
+ "compio",
+ "embed-resource",
+ "image",
  "slim-detours-sys",
  "sync-unsafe-cell",
  "widestring",
@@ -2610,15 +2682,51 @@ dependencies = [
  "windows-numerics",
  "windows-sys 0.60.2",
  "winio-handle",
- "winio-pollable",
  "winio-primitive",
 ]
 
 [[package]]
-name = "winnow"
-version = "0.7.11"
+name = "winio-ui-winui"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74c7b26e3480b707944fc872477815d29a8e429d2f93a1ce000f5fa84a15cbcd"
+checksum = "0ad9947c2c23cfb15b8baf50fe3030f14461ef04e80f69153ac1f5f2ec46e305"
+dependencies = [
+ "compio",
+ "compio-log",
+ "compio-runtime",
+ "image",
+ "inherit-methods-macro",
+ "oneshot",
+ "scoped-tls",
+ "send_wrapper",
+ "widestring",
+ "windows",
+ "windows-sys 0.60.2",
+ "winio-callback",
+ "winio-handle",
+ "winio-primitive",
+ "winio-ui-windows-common",
+ "winio-winui3",
+]
+
+[[package]]
+name = "winio-winui3"
+version = "0.1.0+winui3-1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3248e9f1affed8ea66784745dd08ed5bcaa7b05f8b0ea7168047b6a7529c781"
+dependencies = [
+ "windows",
+ "windows-collections",
+ "windows-core",
+ "windows-future",
+ "windows-numerics",
+]
+
+[[package]]
+name = "winnow"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3edebf492c8125044983378ecb5766203ad3b4c2f7a922bd7dd207f6d443e95"
 dependencies = [
  "memchr",
 ]
