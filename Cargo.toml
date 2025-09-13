@@ -9,19 +9,18 @@ repository = "https://github.com/Berrysoft/Balls"
 
 [dependencies]
 bitflags = { version = "2.6.0", features = ["std"] }
-compio = { version = "0.15.0", features = [
+compio = { version = "0.16.0", features = [
     "macros",
     "nightly",
     "time",
     "bytes",
 ] }
-compio-driver = { version = "0.8.0", features = ["iocp-wait-packet"] }
+compio-driver = { version = "0.9.0", features = ["iocp-wait-packet"] }
 futures-util = "0.3.30"
 rand = { version = "0.9.0", features = ["nightly"] }
 rand_distr = "0.5.1"
-winio = { version = "0.7.0", default-features = false, features = [
+winio = { version = "0.8.1", default-features = false, features = [
     "nightly",
-    "win32-dark-mode",
     "win32",
 ] }
 
