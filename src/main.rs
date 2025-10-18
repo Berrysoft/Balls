@@ -100,6 +100,10 @@ impl Component for MainModel {
                     let region = monitors[0].client_scaled();
                     region.origin + region.size / 2.0 - window.size() / 2.0
                 },
+                #[cfg(windows)]
+                backdrop: Backdrop::MicaAlt,
+                #[cfg(target_os = "macos")]
+                vibrancy: Some(Vibrancy::Titlebar),
             },
             canvas: Canvas = (&window),
         }
@@ -273,11 +277,18 @@ impl Component for MainModel {
         let size = self.canvas.size();
         let palette = Palette::current();
         let mut ctx = self.canvas.context();
-        let brush = SolidColorBrush::new(palette.erase);
-        ctx.fill_rect(brush, Rect::from_size(size));
+        if !cfg!(any(windows, target_os = "macos")) {
+            let brush = SolidColorBrush::new(palette.erase);
+            ctx.fill_rect(brush, Rect::from_size(size));
+        }
 
         let drect = self.state.drect;
-        let brush = SolidColorBrush::new(palette.back);
+        let back_color = if cfg!(any(windows, target_os = "macos")) {
+            palette.back.with_alpha(127)
+        } else {
+            palette.back
+        };
+        let brush = SolidColorBrush::new(back_color);
         ctx.fill_rect(brush, drect);
 
         let extend = drect.width() / CLIENT_WIDTH;
