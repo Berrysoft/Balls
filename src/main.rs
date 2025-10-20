@@ -103,7 +103,7 @@ impl Component for MainModel {
                 #[cfg(windows)]
                 backdrop: Backdrop::MicaAlt,
                 #[cfg(target_os = "macos")]
-                vibrancy: Some(Vibrancy::Titlebar),
+                vibrancy: Some(Vibrancy::FullScreenUI),
             },
             canvas: Canvas = (&window),
         }
