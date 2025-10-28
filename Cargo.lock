@@ -315,9 +315,9 @@ dependencies = [
 
 [[package]]
 name = "compio-runtime"
-version = "0.9.1"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b49f9c5ede8b9f18888f304ed3d01c9406d38a4877ff742b5326724341fe1970"
+checksum = "c5f917dcd14830bcd0e0ee7a47bcf4fd1cbee5f45c55c0433efb242511104952"
 dependencies = [
  "async-task",
  "cfg-if",
@@ -329,6 +329,7 @@ dependencies = [
  "futures-util",
  "libc",
  "once_cell",
+ "pin-project-lite",
  "scoped-tls",
  "slab",
  "socket2",
