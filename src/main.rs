@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![feature(try_trait_v2)]
 
 use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};
 
@@ -7,6 +8,7 @@ use balls::{
     Special,
 };
 use compio::{
+    BufResult,
     fs::File,
     io::{AsyncReadAtExt, AsyncWriteAtExt},
     runtime::spawn,
@@ -14,8 +16,33 @@ use compio::{
 };
 use winio::prelude::*;
 
-fn main() {
-    App::new("io.github.berrysoft.balls").run::<MainModel>(std::env::args_os().nth(1));
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// An error from the UI backend.
+    #[error("UI error: {0}")]
+    Ui(#[from] winio::Error),
+    /// An error from [`winio_layout`].
+    #[error("Layout error: {0}")]
+    Layout(#[from] TaffyError),
+    /// An IO error.
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+impl<E: Into<Error> + std::fmt::Display> From<LayoutError<E>> for Error {
+    fn from(e: LayoutError<E>) -> Self {
+        match e {
+            LayoutError::Taffy(te) => Error::Layout(te),
+            LayoutError::Child(ce) => ce.into(),
+            _ => Error::Io(std::io::Error::other(e.to_string())),
+        }
+    }
+}
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+fn main() -> Result<()> {
+    App::new("io.github.berrysoft.balls")?.run::<MainModel>(std::env::args_os().nth(1))
 }
 
 #[derive(Debug)]
@@ -40,8 +67,8 @@ impl State {
 }
 
 impl State {
-    pub fn set_drect(&mut self, canvas: &Canvas) {
-        let size = canvas.size();
+    pub fn set_drect(&mut self, canvas: &Canvas) -> Result<()> {
+        let size = canvas.size()?;
         let columns = self.map.column_len() as f64;
         let rows = self.map.row_len() as f64;
         let sidew = size.width / columns;
@@ -52,6 +79,7 @@ impl State {
         let dx = (size.width - dw) / 2.0;
         let dy = (size.height - dh) / 2.0;
         self.drect = Rect::new(Point::new(dx, dy), Size::new(dw, dh));
+        Ok(())
     }
 
     pub fn com_point(&self, rp: Point) -> Point {
@@ -87,18 +115,19 @@ enum MainMessage {
 }
 
 impl Component for MainModel {
+    type Error = Error;
     type Event = ();
     type Init<'a> = Option<OsString>;
     type Message = MainMessage;
 
-    fn init<'a>(counter: Self::Init<'a>, sender: &ComponentSender<Self>) -> Self {
+    async fn init<'a>(counter: Self::Init<'a>, sender: &ComponentSender<Self>) -> Result<Self> {
         init! {
             window: Window = (()) => {
                 size: Size::new(450.0, 600.0),
                 loc: {
-                    let monitors = Monitor::all();
+                    let monitors = Monitor::all()?;
                     let region = monitors[0].client_scaled();
-                    region.origin + region.size / 2.0 - window.size() / 2.0
+                    region.origin + region.size / 2.0 - window.size()? / 2.0
                 },
                 #[cfg(windows)]
                 backdrop: Backdrop::MicaAlt,
@@ -109,7 +138,7 @@ impl Component for MainModel {
         }
 
         #[cfg(windows)]
-        window.set_icon_by_id(1);
+        window.set_icon_by_id(1)?;
 
         let state = State::new();
 
@@ -128,11 +157,11 @@ impl Component for MainModel {
         })
         .detach();
 
-        Self {
+        Ok(Self {
             window,
             canvas,
             state,
-        }
+        })
     }
 
     async fn start(&mut self, sender: &ComponentSender<Self>) -> ! {
@@ -149,32 +178,36 @@ impl Component for MainModel {
         }
     }
 
-    async fn update(&mut self, message: Self::Message, sender: &ComponentSender<Self>) -> bool {
+    async fn update(
+        &mut self,
+        message: Self::Message,
+        sender: &ComponentSender<Self>,
+    ) -> Result<bool> {
         match message {
-            MainMessage::Noop => false,
-            MainMessage::Redraw => true,
+            MainMessage::Noop => Ok(false),
+            MainMessage::Redraw => Ok(true),
             MainMessage::Startup(p) => {
                 if let Some(path) = p
                     && compio::fs::metadata(&path).await.is_ok()
                 {
-                    if !open_record(&self.window, &path, &mut self.state).await {
+                    if !open_record(&self.window, &path, &mut self.state).await? {
                         sender.output(());
-                        return false;
+                        return Ok(false);
                     }
-                } else if !init_balls(&self.window, &mut self.state).await {
+                } else if !init_balls(&self.window, &mut self.state).await? {
                     sender.output(());
-                    return false;
+                    return Ok(false);
                 }
-                self.window.show();
-                true
+                self.window.show()?;
+                Ok(true)
             }
             MainMessage::MouseMove(p) => {
                 self.state.mouse = p;
                 if self.state.ticker.is_none() {
                     self.state.map.update_sample(self.state.com_point(p));
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
             }
             MainMessage::MouseUp(b) => match b {
@@ -184,7 +217,7 @@ impl Component for MainModel {
                             Some(self.state.map.start(self.state.com_point(self.state.mouse)));
                         self.state.timer_running.set(true);
                     }
-                    true
+                    Ok(true)
                 }
                 MouseButton::Right => {
                     if self.state.ticker.is_some() {
@@ -192,9 +225,9 @@ impl Component for MainModel {
                             .timer_running
                             .set(!self.state.timer_running.get());
                     }
-                    true
+                    Ok(false)
                 }
-                _ => false,
+                _ => Ok(false),
             },
             MainMessage::Tick => {
                 if let Some(mut ticker) = self.state.ticker.take() {
@@ -210,35 +243,35 @@ impl Component for MainModel {
                             let difficulty = self.state.map.difficulty();
                             let balls_num = self.state.map.balls_num();
                             let score = self.state.map.score();
-                            if !show_stop(&self.window, difficulty, balls_num, score).await
-                                || !init_balls(&self.window, &mut self.state).await
+                            if !show_stop(&self.window, difficulty, balls_num, score).await?
+                                || !init_balls(&self.window, &mut self.state).await?
                             {
                                 sender.output(());
                             }
                         }
                     }
-                    return true;
+                    return Ok(true);
                 }
-                false
+                Ok(false)
             }
             MainMessage::Close => {
                 let running = self.state.timer_running.replace(false);
 
-                match show_close(&self.window, &mut self.state).await {
+                match show_close(&self.window, &mut self.state).await? {
                     ShowCloseResult::Close => {
                         sender.output(());
-                        false
+                        Ok(false)
                     }
                     ShowCloseResult::Cancel => {
                         self.state.timer_running.set(running);
-                        false
+                        Ok(false)
                     }
                     ShowCloseResult::Retry => {
-                        if init_balls(&self.window, &mut self.state).await {
-                            true
+                        if init_balls(&self.window, &mut self.state).await? {
+                            Ok(true)
                         } else {
                             self.state.timer_running.set(running);
-                            false
+                            Ok(false)
                         }
                     }
                 }
@@ -246,7 +279,7 @@ impl Component for MainModel {
         }
     }
 
-    fn render(&mut self, _sender: &ComponentSender<Self>) {
+    fn render(&mut self, _sender: &ComponentSender<Self>) -> Result<()> {
         {
             let difficulty = self.state.map.difficulty();
             let title = if let Some(ticker) = self.state.ticker.as_ref() {
@@ -265,21 +298,20 @@ impl Component for MainModel {
                     self.state.map.score()
                 )
             };
-            if self.window.text() != title {
-                self.window.set_text(title);
+            if self.window.text()? != title {
+                self.window.set_text(title)?;
             }
         }
-        let csize = self.window.client_size();
-        self.canvas.set_size(csize);
-        self.canvas.set_loc(Point::zero());
-        self.state.set_drect(&self.canvas);
+        let csize = self.window.client_size()?;
+        self.canvas.set_rect(csize.into())?;
+        self.state.set_drect(&self.canvas)?;
 
-        let size = self.canvas.size();
+        let size = self.canvas.size()?;
         let palette = Palette::current();
-        let mut ctx = self.canvas.context();
+        let mut ctx = self.canvas.context()?;
         if !cfg!(any(windows, target_os = "macos")) {
             let brush = SolidColorBrush::new(palette.erase);
-            ctx.fill_rect(brush, Rect::from_size(size));
+            ctx.fill_rect(brush, size.into())?;
         }
 
         let drect = self.state.drect;
@@ -289,7 +321,7 @@ impl Component for MainModel {
             palette.back
         };
         let brush = SolidColorBrush::new(back_color);
-        ctx.fill_rect(brush, drect);
+        ctx.fill_rect(brush, drect)?;
 
         let extend = drect.width() / CLIENT_WIDTH;
         let font = DrawingFontBuilder::new()
@@ -306,7 +338,7 @@ impl Component for MainModel {
                 && sample_pos.y <= CLIENT_HEIGHT - RADIUS
             {
                 let brush = SolidColorBrush::new(palette.red_sample);
-                ctx.fill_ellipse(brush, self.state.ball_rect(sample_pos));
+                ctx.fill_ellipse(brush, self.state.ball_rect(sample_pos))?;
             }
         }
         let bball = if self.state.map.doubled_score() {
@@ -322,14 +354,14 @@ impl Component for MainModel {
             .map(|ticker| ticker.is_end())
             .unwrap_or_default();
         if !end_shooting {
-            ctx.fill_ellipse(&bball, self.state.ball_rect(start_pos));
+            ctx.fill_ellipse(&bball, self.state.ball_rect(start_pos))?;
         }
         if let Some(ticker) = self.state.ticker.as_ref() {
             if let Some(new_start) = ticker.new_startp() {
-                ctx.fill_ellipse(&bball, self.state.ball_rect(new_start));
+                ctx.fill_ellipse(&bball, self.state.ball_rect(new_start))?;
             }
             for b in ticker.balls() {
-                ctx.fill_ellipse(&bball, self.state.ball_rect(b.pos));
+                ctx.fill_ellipse(&bball, self.state.ball_rect(b.pos))?;
             }
         }
         let pborder = BrushPen::new(SolidColorBrush::new(palette.green_border), 3.0);
@@ -356,9 +388,9 @@ impl Component for MainModel {
                         round_rect *= extend;
                         round_rect.origin += drect.origin.to_vector();
                         let radius = Size::new(10.0, 10.0) * extend;
-                        ctx.fill_round_rect(bfill, round_rect, radius);
-                        ctx.draw_round_rect(&pborder, round_rect, radius);
-                        ctx.draw_str(btext, font.clone(), center, score.to_string());
+                        ctx.fill_round_rect(bfill, round_rect, radius)?;
+                        ctx.draw_round_rect(&pborder, round_rect, radius)?;
+                        ctx.draw_str(btext, font.clone(), center, score.to_string())?;
                     }
                     BallType::Special(special) => {
                         let bcircle = SolidColorBrush::new(special_color(*special));
@@ -367,8 +399,8 @@ impl Component for MainModel {
                             Point::new(real_c.x - r, real_c.y - r) + drect.origin.to_vector(),
                             Size::new(2.0 * r, 2.0 * r),
                         );
-                        ctx.fill_ellipse(bcircle, circle_rect);
-                        ctx.draw_ellipse(&pborder, circle_rect);
+                        ctx.fill_ellipse(bcircle, circle_rect)?;
+                        ctx.draw_ellipse(&pborder, circle_rect)?;
                         let bfore = SolidColorBrush::new(palette.fore_light);
                         let pfore = BrushPen::new(&bfore, 3.0);
                         match special {
@@ -378,12 +410,12 @@ impl Component for MainModel {
                                     &pfore,
                                     Point::new(center.x, center.y - length),
                                     Point::new(center.x, center.y + length),
-                                );
+                                )?;
                                 ctx.draw_line(
                                     &pfore,
                                     Point::new(center.x - length, center.y),
                                     Point::new(center.x + length, center.y),
-                                );
+                                )?;
                             }
                             Special::Delete => {
                                 let length = (NUM_SIZE - 20.0) * extend / 2.0;
@@ -391,19 +423,20 @@ impl Component for MainModel {
                                     &pfore,
                                     Point::new(center.x - length, center.y),
                                     Point::new(center.x + length, center.y),
-                                );
+                                )?;
                             }
                             Special::Random | Special::RandomOld => {
-                                ctx.draw_str(&bfore, font.clone(), center, "?");
+                                ctx.draw_str(&bfore, font.clone(), center, "?")?;
                             }
                             Special::DoubleScore => {
-                                ctx.draw_str(&bfore, font.clone(), center, "$");
+                                ctx.draw_str(&bfore, font.clone(), center, "$")?;
                             }
                         }
                     }
                 }
             }
         }
+        Ok(())
     }
 }
 
@@ -416,6 +449,10 @@ fn difficulty_str(difficulty: Difficulty) -> &'static str {
     }
 }
 
+fn is_dark() -> bool {
+    ColorTheme::current().unwrap_or(ColorTheme::Light) == ColorTheme::Dark
+}
+
 fn adjust_color(mut c: Color, is_dark: bool) -> Color {
     if !is_dark {
         c.r = (c.r as u16 + 100).min(255) as u8;
@@ -426,7 +463,7 @@ fn adjust_color(mut c: Color, is_dark: bool) -> Color {
 }
 
 fn square_color(t: i32) -> Color {
-    let is_dark = ColorTheme::current() == ColorTheme::Dark;
+    let is_dark = is_dark();
     const POWER: i32 = 4;
     const RANGE: i32 = 256 / POWER;
     let t = t % (RANGE * 5);
@@ -475,8 +512,7 @@ struct Palette {
 
 impl Palette {
     pub fn current() -> &'static Self {
-        let is_dark = ColorTheme::current() == ColorTheme::Dark;
-        if is_dark {
+        if is_dark() {
             &DARK_PALETTE
         } else {
             &LIGHT_PALETTE
@@ -521,7 +557,7 @@ fn special_color(s: Special) -> Color {
     }
 }
 
-async fn init_balls(window: &Window, state: &mut State) -> bool {
+async fn init_balls(window: &Window, state: &mut State) -> Result<bool> {
     const SIMPLE: u16 = 100;
     const NORMAL: u16 = 101;
     const HARD: u16 = 102;
@@ -544,20 +580,25 @@ async fn init_balls(window: &Window, state: &mut State) -> bool {
         .custom_button(CustomButton::new(OPENR, "打开存档"))
         .style(MessageBoxStyle::Info)
         .show(Some(window))
-        .await;
+        .await?;
     let difficulty = match res {
         MessageBoxResponse::Custom(OPENR) => return show_open(window, state).await,
         MessageBoxResponse::Custom(SIMPLE) => Difficulty::Simple,
         MessageBoxResponse::Custom(NORMAL) => Difficulty::Normal,
         MessageBoxResponse::Custom(HARD) => Difficulty::Hard,
         MessageBoxResponse::Custom(COMPETE) => Difficulty::Compete,
-        _ => return false,
+        _ => return Ok(false),
     };
     state.map.init(difficulty);
-    state.map.reset()
+    Ok(state.map.reset())
 }
 
-async fn show_stop(window: &Window, difficulty: Difficulty, balls_num: usize, score: u64) -> bool {
+async fn show_stop(
+    window: &Window,
+    difficulty: Difficulty,
+    balls_num: usize,
+    score: u64,
+) -> Result<bool> {
     const RETRY: u16 = 100;
     let res = MessageBox::new()
         .title("二维弹球")
@@ -572,8 +613,8 @@ async fn show_stop(window: &Window, difficulty: Difficulty, balls_num: usize, sc
         .custom_button(CustomButton::new(RETRY, "重新开始"))
         .style(MessageBoxStyle::Info)
         .show(Some(window))
-        .await;
-    res == MessageBoxResponse::Custom(RETRY)
+        .await?;
+    Ok(res == MessageBoxResponse::Custom(RETRY))
 }
 
 enum ShowCloseResult {
@@ -582,7 +623,7 @@ enum ShowCloseResult {
     Retry,
 }
 
-async fn show_close(window: &Window, state: &mut State) -> ShowCloseResult {
+async fn show_close(window: &Window, state: &mut State) -> Result<ShowCloseResult> {
     const RETRY: u16 = 100;
     let res = MessageBox::new()
         .title("二维弹球")
@@ -591,10 +632,10 @@ async fn show_close(window: &Window, state: &mut State) -> ShowCloseResult {
         .custom_button(CustomButton::new(RETRY, "重新开始"))
         .style(MessageBoxStyle::Info)
         .show(Some(window))
-        .await;
-    match res {
+        .await?;
+    let res = match res {
         MessageBoxResponse::Yes => {
-            if show_save(window, state).await {
+            if show_save(window, state).await? {
                 ShowCloseResult::Close
             } else {
                 ShowCloseResult::Cancel
@@ -603,18 +644,20 @@ async fn show_close(window: &Window, state: &mut State) -> ShowCloseResult {
         MessageBoxResponse::No => ShowCloseResult::Close,
         MessageBoxResponse::Custom(RETRY) => ShowCloseResult::Retry,
         _ => ShowCloseResult::Cancel,
-    }
+    };
+    Ok(res)
 }
 
-async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> bool {
-    let file = File::open(path).await.unwrap();
-    let (_, buffer) = file.read_to_end_at(vec![], 0).await.unwrap();
+async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> Result<bool> {
+    let file = File::open(path).await?;
+    let BufResult(res, buffer) = file.read_to_end_at(vec![], 0).await;
+    res?;
     if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
         map.update_sample(state.com_point(state.mouse));
         state.map = map;
         state.timer_running.set(ticker.is_none());
         state.ticker = ticker;
-        true
+        Ok(true)
     } else {
         MessageBox::new()
             .title("二维弹球")
@@ -622,29 +665,29 @@ async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State)
             .buttons(MessageBoxButton::Ok)
             .style(MessageBoxStyle::Error)
             .show(Some(window))
-            .await;
-        false
+            .await?;
+        Ok(false)
     }
 }
 
-async fn show_open(window: &Window, state: &mut State) -> bool {
+async fn show_open(window: &Window, state: &mut State) -> Result<bool> {
     let filename = FileBox::new()
         .add_filter(("存档文件", "*.balls"))
         .add_filter(("所有文件", "*.*"))
         .open(Some(window))
-        .await;
+        .await?;
     if let Some(filename) = filename {
         open_record(window, &filename, state).await
     } else {
-        false
+        Ok(false)
     }
 }
 
-async fn show_save(window: &Window, state: &mut State) -> bool {
+async fn show_save(window: &Window, state: &mut State) -> Result<bool> {
     let filename = FileBox::new()
         .add_filter(("存档文件", "*.balls"))
         .save(Some(window))
-        .await;
+        .await?;
     if let Some(mut filename) = filename {
         match filename.extension() {
             None => {
@@ -657,9 +700,9 @@ async fn show_save(window: &Window, state: &mut State) -> bool {
             }
         }
         let data = state.map.to_vec(state.ticker.as_ref());
-        let mut file = File::create(filename).await.unwrap();
-        file.write_all_at(data, 0).await.unwrap();
-        return true;
+        let mut file = File::create(filename).await?;
+        file.write_all_at(data, 0).await.0?;
+        return Ok(true);
     }
-    false
+    Ok(false)
 }
