@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![feature(try_trait_v2)]
 
 use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};
 
@@ -8,7 +7,6 @@ use balls::{
     Special,
 };
 use compio::{
-    BufResult,
     fs::File,
     io::{AsyncReadAtExt, AsyncWriteAtExt},
     runtime::spawn,
@@ -650,8 +648,7 @@ async fn show_close(window: &Window, state: &mut State) -> Result<ShowCloseResul
 
 async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> Result<bool> {
     let file = File::open(path).await?;
-    let BufResult(res, buffer) = file.read_to_end_at(vec![], 0).await;
-    res?;
+    let (_, buffer) = file.read_to_end_at(vec![], 0).await?;
     if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
         map.update_sample(state.com_point(state.mouse));
         state.map = map;
@@ -701,7 +698,7 @@ async fn show_save(window: &Window, state: &mut State) -> Result<bool> {
         }
         let data = state.map.to_vec(state.ticker.as_ref());
         let mut file = File::create(filename).await?;
-        file.write_all_at(data, 0).await.0?;
+        file.write_all_at(data, 0).await?;
         return Ok(true);
     }
     Ok(false)

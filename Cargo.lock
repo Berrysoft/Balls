@@ -223,9 +223,9 @@ dependencies = [
 
 [[package]]
 name = "compio-buf"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa3ebe7f9830a33aa801a223411c8dc011c3271cd5beed56284c86d227bc32e"
+checksum = "5ebb4036bf394915196c09362e4fd5581ee8bf0f3302ab598bff9d646aea2061"
 dependencies = [
  "arrayvec",
  "bumpalo",
