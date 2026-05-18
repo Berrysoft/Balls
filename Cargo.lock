@@ -2618,9 +2618,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winio"
-version = "0.12.0-rc.1"
+version = "0.12.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c566fc4b6b129b4547405256205c6e6cb77e6dca1dfb1db5bedd8241f9ed51a"
+checksum = "d79634a23ef8d3528788589888278e833eace61d5dc93ee14d7ed602883bcd85"
 dependencies = [
  "cfg-if",
  "cfg_aliases",
@@ -2693,9 +2693,9 @@ dependencies = [
 
 [[package]]
 name = "winio-pollable"
-version = "0.5.0-rc.1"
+version = "0.5.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4250a6ee9aa2a9cf7b6552d95d856f03a16310b8a83c4ca1599f3bee7da7a1ae"
+checksum = "7659f547040a763f430d538493b218cf77ffd0ea0a5a5c6b20e5ade45664f74e"
 dependencies = [
  "futures-util",
  "scoped-tls",
@@ -2787,9 +2787,9 @@ dependencies = [
 
 [[package]]
 name = "winio-ui-win32"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb250dbd4f8f74b584eb995818e9a001a48a318fa2056eb7ea8d880152c0bdf4"
+checksum = "e8ffe71e35b23db0136335fbca7b8f89cd0f5d279829e85a7b4f32b0797ae845"
 dependencies = [
  "arrayvec",
  "compio",
@@ -2836,12 +2836,13 @@ dependencies = [
 
 [[package]]
 name = "winio-ui-winui"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2a6daab75dd7b069a51811df48892c5189e36330e0c8b66286e5a788871fd1"
+checksum = "0ed766eec056907f89cea4bbbde5a284db3de50fb781bef21150bbcfa82f2988"
 dependencies = [
  "compio",
  "compio-log",
+ "futures-util",
  "image",
  "inherit-methods-macro",
  "send_wrapper",
