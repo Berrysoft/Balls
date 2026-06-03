@@ -40,7 +40,10 @@ impl<E: Into<Error> + std::fmt::Display> From<LayoutError<E>> for Error {
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 fn main() -> Result<()> {
-    App::new("io.github.berrysoft.balls")?.run::<MainModel>(std::env::args_os().nth(1))
+    App::builder()
+        .name("io.github.berrysoft.balls")
+        .build()?
+        .block_on(MainModel::run_until_event(std::env::args_os().nth(1)))
 }
 
 #[derive(Debug)]
