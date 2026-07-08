@@ -28,6 +28,9 @@ winio = { version = "0.12.0-rc.3", default-features = false, features = [
     "win32-dark-mode",
 ] }
 
+[target.'cfg(windows)'.dependencies]
+ucrtbase = { version = "0.1.1", optional = true }
+
 [build-dependencies]
 winres = "0.1.12"
 
@@ -37,7 +40,6 @@ qt = ["winio/qt"]
 gtk = ["winio/gtk"]
 
 objc-static = ["winio/objc-static"]
-vc-ltl = []
 
 [profile.release]
 lto = true

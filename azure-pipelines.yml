@@ -19,17 +19,10 @@ jobs:
   
   steps:
   - pwsh: |
-      Invoke-WebRequest -Uri "https://globalcdn.nuget.org/packages/vc-ltl.5.3.1.nupkg?packageVersion=5.3.1" -OutFile "vc-ltl.nupkg"
-      Expand-Archive vc-ltl.nupkg -DestinationPath vc-ltl
-    displayName: "Download VC-LTL"
-
-  - pwsh: |
       rustup toolchain install nightly --no-self-update
       rustup +nightly target add $(target)
 
-      $env:VC_LTL_LIB="vc-ltl/build/native/TargetPlatform/10.0.19041.0/lib"
-
-      cargo +nightly build --release --target $(target) --features vc-ltl
+      cargo +nightly build --release --target $(target) --features ucrtbase
     displayName: "Build"
 
   - pwsh: |
