@@ -580,7 +580,7 @@ async fn init_balls(window: &Window, state: &mut State) -> Result<bool> {
         .custom_button(CustomButton::new(COMPETE, "挑战"))
         .custom_button(CustomButton::new(OPENR, "打开存档"))
         .style(MessageBoxStyle::Info)
-        .show(Some(window))
+        .show(Some(window))?
         .await?;
     let difficulty = match res {
         MessageBoxResponse::Custom(OPENR) => return show_open(window, state).await,
@@ -613,7 +613,7 @@ async fn show_stop(
         .buttons(MessageBoxButton::Close)
         .custom_button(CustomButton::new(RETRY, "重新开始"))
         .style(MessageBoxStyle::Info)
-        .show(Some(window))
+        .show(Some(window))?
         .await?;
     Ok(res == MessageBoxResponse::Custom(RETRY))
 }
@@ -632,7 +632,7 @@ async fn show_close(window: &Window, state: &mut State) -> Result<ShowCloseResul
         .buttons(MessageBoxButton::Yes | MessageBoxButton::No | MessageBoxButton::Cancel)
         .custom_button(CustomButton::new(RETRY, "重新开始"))
         .style(MessageBoxStyle::Info)
-        .show(Some(window))
+        .show(Some(window))?
         .await?;
     let res = match res {
         MessageBoxResponse::Yes => {
@@ -664,7 +664,7 @@ async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State)
             .message("存档是由本游戏的不同版本创建的，无法打开")
             .buttons(MessageBoxButton::Ok)
             .style(MessageBoxStyle::Error)
-            .show(Some(window))
+            .show(Some(window))?
             .await?;
         Ok(false)
     }
@@ -674,7 +674,7 @@ async fn show_open(window: &Window, state: &mut State) -> Result<bool> {
     let filename = FileBox::new()
         .add_filter(("存档文件", "*.balls"))
         .add_filter(("所有文件", "*.*"))
-        .open(Some(window))
+        .open(Some(window))?
         .await?;
     if let Some(filename) = filename {
         open_record(window, &filename, state).await
@@ -686,7 +686,7 @@ async fn show_open(window: &Window, state: &mut State) -> Result<bool> {
 async fn show_save(window: &Window, state: &mut State) -> Result<bool> {
     let filename = FileBox::new()
         .add_filter(("存档文件", "*.balls"))
-        .save(Some(window))
+        .save(Some(window))?
         .await?;
     if let Some(mut filename) = filename {
         match filename.extension() {
