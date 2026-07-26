@@ -7,7 +7,6 @@ use balls::{
     Special,
 };
 use compio::{
-    fs::File,
     io::{AsyncReadAtExt, AsyncWriteAtExt},
     runtime::spawn,
     time::interval,
@@ -650,7 +649,7 @@ async fn show_close(window: &Window, state: &mut State) -> Result<ShowCloseResul
 }
 
 async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> Result<bool> {
-    let file = File::open(path).await?;
+    let file = UriFile::open(path).await?;
     let (_, buffer) = file.read_to_end_at(vec![], 0).await?;
     if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
         map.update_sample(state.com_point(state.mouse));
@@ -700,7 +699,7 @@ async fn show_save(window: &Window, state: &mut State) -> Result<bool> {
             }
         }
         let data = state.map.to_vec(state.ticker.as_ref());
-        let mut file = File::create(filename).await?;
+        let mut file = UriFile::create(filename).await?;
         file.write_all_at(data, 0).await?;
         return Ok(true);
     }
