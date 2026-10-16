@@ -1,6 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{cell::Cell, ffi::OsString, path::Path, rc::Rc, time::Duration};
+use std::{
+    cell::Cell,
+    ffi::{OsStr, OsString},
+    path::PathBuf,
+    rc::Rc,
+    time::Duration,
+};
 
 use balls::{
     BallType, CLIENT_HEIGHT, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE,
@@ -105,7 +111,6 @@ struct MainModel {
 }
 
 enum MainMessage {
-    Noop,
     Startup(Option<OsString>),
     Tick,
     Close,
@@ -166,7 +171,7 @@ impl Component for MainModel {
 
     async fn start(&mut self, sender: &ComponentSender<Self>) -> ! {
         start! {
-            sender, default: MainMessage::Noop,
+            sender,
             self.window => {
                 WindowEvent::Close => MainMessage::Close,
                 WindowEvent::Resize => MainMessage::Redraw,
@@ -184,7 +189,6 @@ impl Component for MainModel {
         sender: &ComponentSender<Self>,
     ) -> Result<bool> {
         match message {
-            MainMessage::Noop => Ok(false),
             MainMessage::Redraw => Ok(true),
             MainMessage::Startup(p) => {
                 if let Some(path) = p
@@ -324,12 +328,11 @@ impl Component for MainModel {
         ctx.fill_rect(brush, drect)?;
 
         let extend = drect.width() / CLIENT_WIDTH;
-        let font = DrawingFontBuilder::new()
+        let font = FontBuilder::new()
             .family("Arial")
             .size(NUM_SIZE * extend)
-            .halign(HAlign::Center)
-            .valign(VAlign::Center)
             .build();
+        let text_anchor = RelativePoint::new(0.5, 0.5);
         if self.state.ticker.is_none() {
             let sample_pos = self.state.map.sample();
             if sample_pos.x >= RADIUS
@@ -390,7 +393,7 @@ impl Component for MainModel {
                         let radius = Size::new(10.0, 10.0) * extend;
                         ctx.fill_round_rect(bfill, round_rect, radius)?;
                         ctx.draw_round_rect(&pborder, round_rect, radius)?;
-                        ctx.draw_str(btext, font.clone(), center, score.to_string())?;
+                        ctx.draw_str(btext, font.clone(), text_anchor, center, score.to_string())?;
                     }
                     BallType::Special(special) => {
                         let bcircle = SolidColorBrush::new(special_color(*special));
@@ -426,10 +429,10 @@ impl Component for MainModel {
                                 )?;
                             }
                             Special::Random | Special::RandomOld => {
-                                ctx.draw_str(&bfore, font.clone(), center, "?")?;
+                                ctx.draw_str(&bfore, font.clone(), text_anchor, center, "?")?;
                             }
                             Special::DoubleScore => {
-                                ctx.draw_str(&bfore, font.clone(), center, "$")?;
+                                ctx.draw_str(&bfore, font.clone(), text_anchor, center, "$")?;
                             }
                         }
                     }
@@ -648,7 +651,7 @@ async fn show_close(window: &Window, state: &mut State) -> Result<ShowCloseResul
     Ok(res)
 }
 
-async fn open_record(window: &Window, path: impl AsRef<Path>, state: &mut State) -> Result<bool> {
+async fn open_record(window: &Window, path: impl AsRef<OsStr>, state: &mut State) -> Result<bool> {
     let file = UriFile::open(path).await?;
     let (_, buffer) = file.read_to_end_at(vec![], 0).await?;
     if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
@@ -687,7 +690,8 @@ async fn show_save(window: &Window, state: &mut State) -> Result<bool> {
         .add_filter(("存档文件", "*.balls"))
         .save(Some(window))?
         .await?;
-    if let Some(mut filename) = filename {
+    if let Some(filename) = filename {
+        let mut filename = PathBuf::from(filename);
         match filename.extension() {
             None => {
                 filename.set_extension("balls");
