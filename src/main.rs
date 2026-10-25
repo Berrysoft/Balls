@@ -1,10 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{
-    cell::Cell,
     ffi::{OsStr, OsString},
     path::PathBuf,
-    rc::Rc,
     time::Duration,
 };
 
@@ -12,11 +10,7 @@ use balls::{
     BallType, CLIENT_HEIGHT, CLIENT_WIDTH, Difficulty, Map, MapTicker, NUM_SIZE, RADIUS, SIDE,
     Special,
 };
-use compio::{
-    io::{AsyncReadAtExt, AsyncWriteAtExt},
-    runtime::spawn,
-    time::interval,
-};
+use compio::io::{AsyncReadAtExt, AsyncWriteAtExt};
 use winio::prelude::*;
 
 #[derive(Debug, thiserror::Error)]
@@ -57,17 +51,17 @@ struct State {
     ticker: Option<MapTicker>,
     drect: Rect,
     mouse: Point,
-    timer_running: Rc<Cell<bool>>,
+    timer: Child<Timer>,
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub fn new(timer: Child<Timer>) -> Self {
         Self {
             map: Map::default(),
             ticker: None,
             drect: Rect::zero(),
             mouse: Point::zero(),
-            timer_running: Rc::new(Cell::new(false)),
+            timer,
         }
     }
 }
@@ -140,27 +134,15 @@ impl Component for MainModel {
                 vibrancy: Some(Vibrancy::FullScreenUI),
             },
             canvas: Canvas = (&window),
+            timer: Timer = (Duration::from_millis(15)),
         }
 
         #[cfg(windows)]
         window.set_icon_by_id(1)?;
 
-        let state = State::new();
+        let state = State::new(timer);
 
         sender.post(MainMessage::Startup(counter));
-
-        let sender = sender.clone();
-        let timer_running = state.timer_running.clone();
-        spawn(async move {
-            let mut interval = interval(Duration::from_millis(15));
-            loop {
-                interval.tick().await;
-                if timer_running.get() {
-                    sender.post(MainMessage::Tick);
-                }
-            }
-        })
-        .detach();
 
         Ok(Self {
             window,
@@ -179,6 +161,9 @@ impl Component for MainModel {
             self.canvas => {
                 CanvasEvent::MouseMove(p) => MainMessage::MouseMove(p),
                 CanvasEvent::MouseUp(b) => MainMessage::MouseUp(b),
+            },
+            self.state.timer => {
+                TimerEvent::Tick => MainMessage::Tick,
             }
         }
     }
@@ -219,15 +204,14 @@ impl Component for MainModel {
                     if self.state.ticker.is_none() {
                         self.state.ticker =
                             Some(self.state.map.start(self.state.com_point(self.state.mouse)));
-                        self.state.timer_running.set(true);
+                        self.state.timer.enable()?;
                     }
                     Ok(true)
                 }
                 MouseButton::Right => {
                     if self.state.ticker.is_some() {
-                        self.state
-                            .timer_running
-                            .set(!self.state.timer_running.get());
+                        let running = self.state.timer.is_enabled()?;
+                        self.state.timer.set_enabled(!running)?;
                     }
                     Ok(false)
                 }
@@ -259,7 +243,8 @@ impl Component for MainModel {
                 Ok(false)
             }
             MainMessage::Close => {
-                let running = self.state.timer_running.replace(false);
+                let running = self.state.timer.is_enabled()?;
+                self.state.timer.stop()?;
 
                 match show_close(&self.window, &mut self.state).await? {
                     ShowCloseResult::Close => {
@@ -267,14 +252,14 @@ impl Component for MainModel {
                         Ok(false)
                     }
                     ShowCloseResult::Cancel => {
-                        self.state.timer_running.set(running);
+                        self.state.timer.set_enabled(running)?;
                         Ok(false)
                     }
                     ShowCloseResult::Retry => {
                         if init_balls(&self.window, &mut self.state).await? {
                             Ok(true)
                         } else {
-                            self.state.timer_running.set(running);
+                            self.state.timer.set_enabled(running)?;
                             Ok(false)
                         }
                     }
@@ -657,7 +642,7 @@ async fn open_record(window: &Window, path: impl AsRef<OsStr>, state: &mut State
     if let Ok((mut map, ticker)) = Map::from_bytes(buffer) {
         map.update_sample(state.com_point(state.mouse));
         state.map = map;
-        state.timer_running.set(ticker.is_none());
+        state.timer.set_enabled(ticker.is_none())?;
         state.ticker = ticker;
         Ok(true)
     } else {
